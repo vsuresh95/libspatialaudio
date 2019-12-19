@@ -70,6 +70,12 @@ unsigned int mit_hrtf_get(int* pAzimuth, int* pElevation, unsigned int samplerat
     unsigned int nTotalTaps = 0;
     unsigned int niTap = 0;
 
+    /*
+    Silly correction for kAmblib_Dodecahedron
+    */
+    if (*pElevation < -40.f)
+        *pElevation = -40.f;
+
     //Check if the requested HRTF exists
     if(!mit_hrtf_availability(*pAzimuth, *pElevation, samplerate))
         return 0;
