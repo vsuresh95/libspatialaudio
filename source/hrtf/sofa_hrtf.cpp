@@ -18,9 +18,7 @@ SOFA_HRTF::SOFA_HRTF(std::string path, unsigned i_sampleRate)
     hrtf = mysofa_open(path.c_str(), i_sampleRate, &i_internalLength, &err);
     if (hrtf == nullptr)
     {
-        #ifndef NDEBUG
-            std::cout << "Could not load the SOFA HRTF." << std::endl;
-        #endif
+		std::cout << "Could not load the SOFA HRTF." << std::endl;
         return;
     }
 
@@ -55,9 +53,7 @@ bool SOFA_HRTF::get(float f_azimuth, float f_elevation, float** pfHRTF)
     if (delaysSamples[0] > i_filterExtraLength
         || delaysSamples[1] > i_filterExtraLength)
     {
-        #ifndef NDEBUG
-            std::cout << "Too big HRTF delay for the buffer length." << std::endl;
-        #endif
+		std::cout << "Too big HRTF delay for the buffer length." << std::endl;
         return false;
     }
 
