@@ -13,6 +13,7 @@
 /*############################################################################*/
 
 
+#include <cassert>
 #include "AmbisonicEncoderDist.h"
 
 CAmbisonicEncoderDist::CAmbisonicEncoderDist()
@@ -34,8 +35,10 @@ CAmbisonicEncoderDist::CAmbisonicEncoderDist()
 
 CAmbisonicEncoderDist::~CAmbisonicEncoderDist()
 {
-    if(m_pfDelayBuffer)
+    if(m_pfDelayBuffer) {
         delete [] m_pfDelayBuffer;
+		m_pfDelayBuffer = nullptr;
+	}
 }
 
 bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampleRate)
@@ -44,10 +47,17 @@ bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampl
     if(!success)
         return false;
     m_nSampleRate = nSampleRate;
-    m_nDelayBufferLength = (unsigned)((float)knMaxDistance / knSpeedOfSound * m_nSampleRate + 0.5f);
-    if(m_pfDelayBuffer)
+    m_nDelayBufferLength = (unsigned)((float)knMaxDistance * m_nSampleRate / knSpeedOfSound + 0.5f);
+	assert(m_nDelayBufferLength);
+    if(m_pfDelayBuffer) {
         delete [] m_pfDelayBuffer;
+		m_pfDelayBuffer = nullptr;
+	}
     m_pfDelayBuffer = new float[m_nDelayBufferLength];
+	// m_pfDelayBuffer .. (m_pfDelayBuffer + m_nDelayBufferLength) is an array of memory.
+	// I want to ensure that this range of addresses does not contain the address of m_nDelayBufferLength
+	// If it does, the memset on L69 will incorrectly zero out m_nDelayBufferLength.
+	assert(reinterpret_cast<void*>(&m_nDelayBufferLength) < reinterpret_cast<void*>(m_pfDelayBuffer) || reinterpret_cast<void*>(m_pfDelayBuffer + m_nDelayBufferLength) <= reinterpret_cast<void*>(&m_nDelayBufferLength));
     Reset();
     
     return true;
@@ -55,7 +65,11 @@ bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampl
 
 void CAmbisonicEncoderDist::Reset()
 {
+	assert(m_nDelayBufferLength);
     memset(m_pfDelayBuffer, 0, m_nDelayBufferLength * sizeof(float));
+	assert(m_nDelayBufferLength);
+	// If the previous assertion fails, the modulo on L77 (dividing by 0) will fail with SIGFPE
+
     m_fDelay = m_polPosition.fDistance / knSpeedOfSound * m_nSampleRate + 0.5f;
     m_nDelay = (int)m_fDelay;
     m_fDelay -= m_nDelay;

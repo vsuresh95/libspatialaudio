@@ -67,7 +67,15 @@ void CBFormat::ExtractStream(float* pfData, unsigned nChannel, unsigned nSamples
     memcpy(pfData, m_ppfChannels[nChannel], nSamples * sizeof(float));
 }
 
-void CBFormat::operator = (const CBFormat &bf)
+CBFormat& CBFormat::operator = (const CBFormat &bf)
+{
+	if (&bf != this) {
+		memcpy(m_pfData.data(), bf.m_pfData.data(), m_nDataLength * sizeof(float));
+	}
+	return *this;
+}
+
+CBFormat::CBFormat(const CBFormat &bf)
 {
     memcpy(m_pfData.data(), bf.m_pfData.data(), m_nDataLength * sizeof(float));
 }
