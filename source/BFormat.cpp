@@ -21,6 +21,15 @@ CBFormat::CBFormat()
     m_nDataLength = 0;
 }
 
+CBFormat::CBFormat(const CBFormat& other)
+{
+    /// Set m_nSamples?
+    /// Set m_nDataLength?
+
+    assert(m_nDataLength <= other.m_nDataLength);
+    memcpy(m_pfData.data(), other.m_pfData.data(), m_nDataLength * sizeof(float));
+}
+
 unsigned CBFormat::GetSampleCount()
 {
     return m_nSamples;
@@ -67,9 +76,12 @@ void CBFormat::ExtractStream(float* pfData, unsigned nChannel, unsigned nSamples
     memcpy(pfData, m_ppfChannels[nChannel], nSamples * sizeof(float));
 }
 
-void CBFormat::operator = (const CBFormat &bf)
+CBFormat& CBFormat::operator = (const CBFormat &bf)
 {
-    memcpy(m_pfData.data(), bf.m_pfData.data(), m_nDataLength * sizeof(float));
+    if (&bf != this) {
+        memcpy(m_pfData.data(), bf.m_pfData.data(), m_nDataLength * sizeof(float));
+    }
+    return *this;
 }
 
 bool CBFormat::operator == (const CBFormat &bf)
