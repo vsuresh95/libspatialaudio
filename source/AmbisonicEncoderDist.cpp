@@ -68,7 +68,7 @@ void CAmbisonicEncoderDist::Reset()
 {
     assert(m_nDelayBufferLength);
     
-    std:fill(m_pfDelayBuffer, m_pfDelayBuffer + m_nDelayBufferLength, 0.0f);
+    std::fill(m_pfDelayBuffer, m_pfDelayBuffer + m_nDelayBufferLength, 0.0f);
 
     m_fDelay = m_polPosition.fDistance / knSpeedOfSound * m_nSampleRate + 0.5f;
     m_nDelay = (int)m_fDelay;
