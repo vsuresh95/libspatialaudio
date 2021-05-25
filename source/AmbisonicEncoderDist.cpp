@@ -14,6 +14,7 @@
 
 
 #include <cassert>
+#include <algoirithm>
 #include "AmbisonicEncoderDist.h"
 
 CAmbisonicEncoderDist::CAmbisonicEncoderDist()
@@ -66,7 +67,8 @@ bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampl
 void CAmbisonicEncoderDist::Reset()
 {
     assert(m_nDelayBufferLength);
-    memset(m_pfDelayBuffer, 0, m_nDelayBufferLength * sizeof(float));
+    
+    std:fill(m_pfDelayBuffer, m_pfDelayBuffer + m_nDelayBufferLength, 0.0f);
 
     m_fDelay = m_polPosition.fDistance / knSpeedOfSound * m_nSampleRate + 0.5f;
     m_nDelay = (int)m_fDelay;
