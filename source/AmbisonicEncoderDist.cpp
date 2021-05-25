@@ -14,7 +14,7 @@
 
 
 #include <cassert>
-#include <algoirithm>
+#include <algorithm>
 #include "AmbisonicEncoderDist.h"
 
 CAmbisonicEncoderDist::CAmbisonicEncoderDist()
