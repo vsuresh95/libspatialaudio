@@ -16,6 +16,7 @@
 #ifndef _AMBISONIC_ENCODER_DIST_H
 #define _AMBISONIC_ENCODER_DIST_H
 
+#include <vector>
 #include "AmbisonicEncoder.h"
 
 const unsigned knSpeedOfSound = 344;
@@ -32,7 +33,7 @@ class CAmbisonicEncoderDist : public CAmbisonicEncoder
 {
 public:
     CAmbisonicEncoderDist();
-    ~CAmbisonicEncoderDist();
+    ~CAmbisonicEncoderDist() = default;
     /**
         Re-create the object for the given configuration. Previous data is
         lost. Returns true if successful.
@@ -66,7 +67,7 @@ protected:
     float m_fDelay;
     int m_nDelay;
     unsigned m_nDelayBufferLength;
-    float* m_pfDelayBuffer;
+    std::vector<float> m_pfDelayBuffer;
     int m_nIn;
     int m_nOutA;
     int m_nOutB;
