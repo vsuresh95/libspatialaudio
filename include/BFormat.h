@@ -30,6 +30,8 @@ class CBFormat : public CAmbisonicBase
 {
 public:
     CBFormat();
+    CBFormat(const CBFormat& other);
+
     /**
         Returns the number of samples.
     */
@@ -60,7 +62,7 @@ public:
         Copy the content of the buffer. It is assumed that the two objects are
         of the same configuration.
     */
-    void operator = (const CBFormat &bf);
+    CBFormat& operator = (const CBFormat &bf);
     /**
         Returns true if the configuration of the two objects match.
     */

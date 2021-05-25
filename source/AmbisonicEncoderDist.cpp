@@ -13,6 +13,8 @@
 /*############################################################################*/
 
 
+#include <cassert>
+#include <algorithm>
 #include "AmbisonicEncoderDist.h"
 
 CAmbisonicEncoderDist::CAmbisonicEncoderDist()
@@ -21,7 +23,6 @@ CAmbisonicEncoderDist::CAmbisonicEncoderDist()
     m_fDelay = 0.f;
     m_nDelay = 0;
     m_nDelayBufferLength = 0;
-    m_pfDelayBuffer = 0;
     m_nIn = 0;
     m_nOutA = 0;
     m_nOutB = 0;
@@ -32,22 +33,20 @@ CAmbisonicEncoderDist::CAmbisonicEncoderDist()
     Configure(DEFAULT_ORDER, DEFAULT_HEIGHT, DEFAULT_SAMPLERATE);
 }
 
-CAmbisonicEncoderDist::~CAmbisonicEncoderDist()
-{
-    if(m_pfDelayBuffer)
-        delete [] m_pfDelayBuffer;
-}
-
 bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampleRate)
 {
     bool success = CAmbisonicEncoder::Configure(nOrder, b3D, 0);
-    if(!success)
+    if (!success) {
         return false;
+    }
+
     m_nSampleRate = nSampleRate;
-    m_nDelayBufferLength = (unsigned)((float)knMaxDistance / knSpeedOfSound * m_nSampleRate + 0.5f);
-    if(m_pfDelayBuffer)
-        delete [] m_pfDelayBuffer;
-    m_pfDelayBuffer = new float[m_nDelayBufferLength];
+    m_nDelayBufferLength = (unsigned)((float)knMaxDistance * m_nSampleRate / knSpeedOfSound + 0.5f);
+    assert(m_nDelayBufferLength);
+
+    m_pfDelayBuffer.clear();
+    m_pfDelayBuffer.resize(m_nDelayBufferLength);
+
     Reset();
     
     return true;
@@ -55,7 +54,10 @@ bool CAmbisonicEncoderDist::Configure(unsigned nOrder, bool b3D, unsigned nSampl
 
 void CAmbisonicEncoderDist::Reset()
 {
-    memset(m_pfDelayBuffer, 0, m_nDelayBufferLength * sizeof(float));
+    assert(m_nDelayBufferLength);
+    
+    std::fill(m_pfDelayBuffer.begin(), m_pfDelayBuffer.end(), 0.0f);
+
     m_fDelay = m_polPosition.fDistance / knSpeedOfSound * m_nSampleRate + 0.5f;
     m_nDelay = (int)m_fDelay;
     m_fDelay -= m_nDelay;
