@@ -20,6 +20,9 @@
 
 #include "AmbisonicBinauralizer.h"
 
+extern double t_decode_fft;
+extern double t_decode_filter;
+extern double t_decode_ifft;
 
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
@@ -276,9 +279,20 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             memset(m_pfScratchBufferA.data(), 0, m_nFFTSize * sizeof(float));
             for(niChannel = 0; niChannel < m_nChannelCount; niChannel++)
             {
+                clock_t t_start;
+                clock_t t_end;
+                double t_diff;
+
                 memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+
+                t_start = clock();
                 kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
+                t_end = clock();
+                t_diff = double(t_end - t_start);
+                t_decode_fft += t_diff;
+
+                t_start = clock();
                 for(ni = 0; ni < m_nFFTBins; ni++)
                 {
                     cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
@@ -287,7 +301,16 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                                 + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
                     m_pcpScratch[ni] = cpTemp;
                 }
+                t_end = clock();
+                t_diff = double(t_end - t_start);
+                t_decode_filter += t_diff;
+
+                t_start = clock();
                 kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
+                t_end = clock();
+                t_diff = double(t_end - t_start);
+                t_decode_ifft += t_diff;
+                
                 for(ni = 0; ni < m_nFFTSize; ni++)
                     m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
             }
