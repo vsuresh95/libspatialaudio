@@ -210,10 +210,10 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
         // No filtering required
     }
 
-    bool acc_offload = false;
+    bool acc_offload = true;
     if (acc_offload)
     {
-        m_nChannelCount = m_nChannelCount_copy;
+        m_nChannelCount_copy = m_nChannelCount;
         rotate_order_acc_offload(pBFSrcDst, nSamples);
     }
     else
