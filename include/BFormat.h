@@ -80,12 +80,12 @@ public:
     CBFormat& operator *= (const float &fValue);
     CBFormat& operator /= (const float &fValue);
 
-protected:
     unsigned m_nSamples;
     unsigned m_nDataLength;
     std::vector<float> m_pfData;
     std::unique_ptr<float*[]> m_ppfChannels;
 
+protected:
     //friend classes cannot be pure abstract type,
     //so must list each friend class manually
     friend class CAmbisonicEncoder;

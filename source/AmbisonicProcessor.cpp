@@ -17,8 +17,6 @@
 #include "AmbisonicProcessor.h"
 #include <iostream>
 
-extern double t_rotate_acc_mgmt;
-extern double t_rotate_acc;
 extern double t_rotate1;
 extern double t_rotate2;
 extern double t_rotate3;
@@ -26,6 +24,10 @@ extern double t_psycho;
 extern double t_psycho_fft;
 extern double t_psycho_filter;
 extern double t_psycho_ifft;
+
+unsigned m_nChannelCount_copy;
+
+extern void rotate_order_acc_offload(CBFormat* pBFSrcDst, unsigned nSamples);
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -208,30 +210,38 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
         // No filtering required
     }
 
-    /* 3D Ambisonics input expected so perform 3D rotations */
-    if(m_nOrder >= 1)
+    bool acc_offload = false;
+    if (acc_offload)
     {
-        t_start = clock();
-        ProcessOrder1_3D(pBFSrcDst, nSamples);
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_rotate1 += t_diff;
+        m_nChannelCount = m_nChannelCount_copy;
+        rotate_order_acc_offload(pBFSrcDst, nSamples);
     }
-    if(m_nOrder >= 2)
+    else
     {
-        t_start = clock();
-        ProcessOrder2_3D(pBFSrcDst, nSamples);
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_rotate2 += t_diff;
-    }
-    if(m_nOrder >= 3)
-    {
-        t_start = clock();
-        ProcessOrder3_3D(pBFSrcDst, nSamples);
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_rotate3 += t_diff;
+        if(m_nOrder >= 1)
+        {
+            t_start = clock();
+            ProcessOrder1_3D(pBFSrcDst, nSamples);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_rotate1 += t_diff;
+        }
+        if(m_nOrder >= 2)
+        {
+            t_start = clock();
+            ProcessOrder2_3D(pBFSrcDst, nSamples);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_rotate2 += t_diff;
+        }
+        if(m_nOrder >= 3)
+        {
+            t_start = clock();
+            ProcessOrder3_3D(pBFSrcDst, nSamples);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_rotate3 += t_diff;
+        }
     }
 }
 
