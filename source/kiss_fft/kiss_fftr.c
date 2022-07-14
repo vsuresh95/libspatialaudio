@@ -15,6 +15,10 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include "kiss_fftr.h"
 #include "_kiss_fft_guts.h"
 
+extern void fft2_acc_offload_wrap(kiss_fft_cfg cfg, const kiss_fft_cpx *fin, kiss_fft_cpx *fout);
+
+extern unsigned do_fft2_acc_offload;
+
 struct kiss_fftr_state{
     kiss_fft_cfg substate;
     kiss_fft_cpx * tmpbuf;
@@ -77,8 +81,15 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
 
     ncfft = st->substate->nfft;
 
-    /*perform the parallel fft of two real signals packed in real,imag*/
-    kiss_fft( st->substate , (const kiss_fft_cpx*)timedata, st->tmpbuf );
+    /*perform the parallel fft of two real signals packed in real,imag*/    
+    if (do_fft2_acc_offload)
+    {
+        fft2_acc_offload_wrap(st->substate , (const kiss_fft_cpx*)timedata, st->tmpbuf);
+    }
+    else
+    {
+        kiss_fft( st->substate , (const kiss_fft_cpx*)timedata, st->tmpbuf );
+    }
     /* The real part of the DC element of the frequency spectrum in st->tmpbuf
      * contains the sum of the even-numbered elements of the input time sequence
      * The imag part is the sum of the odd-numbered elements

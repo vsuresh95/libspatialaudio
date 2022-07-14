@@ -29,6 +29,9 @@ unsigned m_nChannelCount_copy;
 
 extern void rotate_order_acc_offload(CBFormat* pBFSrcDst, unsigned nSamples);
 
+extern unsigned do_fft2_acc_offload;
+extern bool do_rotate_acc_offload;
+
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
 {
@@ -210,8 +213,7 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
         // No filtering required
     }
 
-    bool acc_offload = true;
-    if (acc_offload)
+    if (do_rotate_acc_offload)
     {
         m_nChannelCount_copy = m_nChannelCount;
         rotate_order_acc_offload(pBFSrcDst, nSamples);
@@ -480,7 +482,9 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
         t_start = clock();
+        do_fft2_acc_offload = 1;
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+        do_fft2_acc_offload = 0;
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_fft += t_diff;
