@@ -482,7 +482,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
         t_start = clock();
-        do_fft2_acc_offload = 0;
+        do_fft2_acc_offload = 1;
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         do_fft2_acc_offload = 0;
         t_end = clock();
