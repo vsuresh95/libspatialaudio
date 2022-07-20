@@ -505,7 +505,9 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         t_start = clock();
         // Convert from frequency domain back to time domain
+        do_fft2_acc_offload = 1;
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+        do_fft2_acc_offload = 0;
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_ifft += t_diff;

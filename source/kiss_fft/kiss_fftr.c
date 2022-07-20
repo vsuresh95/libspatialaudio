@@ -166,5 +166,13 @@ void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *t
         st->tmpbuf[ncfft - k].i *= -1;
 #endif
     }
-    kiss_fft (st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+
+    if (do_fft2_acc_offload)
+    {
+        fft2_acc_offload_wrap(st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+    }
+    else
+    {
+        kiss_fft (st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+    }
 }
