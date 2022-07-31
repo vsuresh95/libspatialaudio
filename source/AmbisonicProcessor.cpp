@@ -25,12 +25,43 @@ extern double t_psycho_fft;
 extern double t_psycho_filter;
 extern double t_psycho_ifft;
 
+extern double t_fft2_acc_mgmt;
+extern double t_fft2_acc;
+extern double t_psycho_fft2_acc_mgmt;
+extern double t_psycho_fft2_acc;
+extern double t_psycho_ifft2_acc_mgmt;
+extern double t_psycho_ifft2_acc;
+
 unsigned m_nChannelCount_copy;
 
 extern void rotate_order_acc_offload(CBFormat* pBFSrcDst, unsigned nSamples);
 
 extern unsigned do_fft2_acc_offload;
 extern bool do_rotate_acc_offload;
+
+
+struct rotate_params {
+    float m_fCosAlpha;
+    float m_fSinAlpha;
+    float m_fCosBeta;
+    float m_fSinBeta;
+    float m_fCosGamma;
+    float m_fSinGamma;
+    float m_fCos2Alpha;
+    float m_fSin2Alpha;
+    float m_fCos2Beta;
+    float m_fSin2Beta;
+    float m_fCos2Gamma;
+    float m_fSin2Gamma;
+    float m_fCos3Alpha;
+    float m_fSin3Alpha;
+    float m_fCos3Beta;
+    float m_fSin3Beta;
+    float m_fCos3Gamma;
+    float m_fSin3Gamma;
+};
+
+extern struct rotate_params rotate_params_inst;
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -215,6 +246,25 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
 
     if (do_rotate_acc_offload)
     {
+        rotate_params_inst.m_fCosAlpha = m_fCosAlpha;
+        rotate_params_inst.m_fSinAlpha = m_fSinAlpha;
+        rotate_params_inst.m_fCosBeta = m_fCosBeta;
+        rotate_params_inst.m_fSinBeta = m_fSinBeta;
+        rotate_params_inst.m_fSinGamma = m_fSinGamma;
+        rotate_params_inst.m_fCosGamma = m_fCosGamma;
+        rotate_params_inst.m_fCos2Alpha = m_fCos2Alpha;
+        rotate_params_inst.m_fSin2Alpha = m_fSin2Alpha;
+        rotate_params_inst.m_fCos2Beta = m_fCos2Beta;
+        rotate_params_inst.m_fSin2Beta = m_fSin2Beta;
+        rotate_params_inst.m_fCos2Gamma = m_fCos2Gamma;
+        rotate_params_inst.m_fSin2Gamma = m_fSin2Gamma;
+        rotate_params_inst.m_fCos3Alpha = m_fCos3Alpha;
+        rotate_params_inst.m_fSin3Alpha = m_fSin3Alpha;
+        rotate_params_inst.m_fCos3Beta = m_fCos3Beta;
+        rotate_params_inst.m_fSin3Beta = m_fSin3Beta;
+        rotate_params_inst.m_fCos3Gamma = m_fCos3Gamma;
+        rotate_params_inst.m_fSin3Gamma = m_fSin3Gamma;
+
         m_nChannelCount_copy = m_nChannelCount;
         rotate_order_acc_offload(pBFSrcDst, nSamples);
     }
@@ -482,12 +532,13 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
         t_start = clock();
-        do_fft2_acc_offload = 1;
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
-        do_fft2_acc_offload = 0;
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_fft += t_diff;
+
+        t_psycho_fft2_acc += t_fft2_acc;
+        t_psycho_fft2_acc_mgmt += t_fft2_acc_mgmt;
 
         t_start = clock();
         // Perform the convolution in the frequency domain
@@ -505,12 +556,14 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         t_start = clock();
         // Convert from frequency domain back to time domain
-        do_fft2_acc_offload = 1;
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
-        do_fft2_acc_offload = 0;
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_ifft += t_diff;
+
+        t_psycho_ifft2_acc += t_fft2_acc;
+        t_psycho_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;
                 memcpy(pBFSrcDst->m_ppfChannels[niChannel], m_pfScratchBufferA, m_nBlockSize * sizeof(float));
