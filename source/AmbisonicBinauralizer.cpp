@@ -31,6 +31,8 @@ extern double t_decode_fft2_acc;
 extern double t_decode_ifft2_acc_mgmt;
 extern double t_decode_ifft2_acc;
 
+extern unsigned do_fft2_acc_offload;
+
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
     , m_pIFFT_cfg(nullptr, kiss_fftr_free)
