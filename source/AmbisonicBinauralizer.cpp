@@ -24,6 +24,13 @@ extern double t_decode_fft;
 extern double t_decode_filter;
 extern double t_decode_ifft;
 
+extern double t_fft2_acc_mgmt;
+extern double t_fft2_acc;
+extern double t_decode_fft2_acc_mgmt;
+extern double t_decode_fft2_acc;
+extern double t_decode_ifft2_acc_mgmt;
+extern double t_decode_ifft2_acc;
+
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
     , m_pIFFT_cfg(nullptr, kiss_fftr_free)
@@ -292,6 +299,9 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 t_diff = double(t_end - t_start);
                 t_decode_fft += t_diff;
 
+                t_decode_fft2_acc += t_fft2_acc;
+                t_decode_fft2_acc_mgmt += t_fft2_acc_mgmt;
+
                 t_start = clock();
                 for(ni = 0; ni < m_nFFTBins; ni++)
                 {
@@ -311,6 +321,9 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 t_diff = double(t_end - t_start);
                 t_decode_ifft += t_diff;
                 
+                t_decode_ifft2_acc += t_fft2_acc;
+                t_decode_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+
                 for(ni = 0; ni < m_nFFTSize; ni++)
                     m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
             }
