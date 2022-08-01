@@ -138,11 +138,11 @@ bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSi
         m_pfOverlap[i] = new float[m_nOverlapLength];
 
     m_pfScratchBufferA = new float[m_nFFTSize];
-    m_ppcpPsychFilters = new kiss_fft_cpx*[m_nOrder+1];
+    m_ppcpPsychFilters = new kiss_fftw_cpx*[m_nOrder+1];
     for(unsigned i = 0; i <= m_nOrder; i++)
-        m_ppcpPsychFilters[i] = new kiss_fft_cpx[m_nFFTBins];
+        m_ppcpPsychFilters[i] = new kiss_fftw_cpx[m_nFFTBins];
 
-    m_pcpScratch = new kiss_fft_cpx[m_nFFTBins];
+    m_pcpScratch = new kiss_fftw_cpx[m_nFFTBins];
 
     //Allocate temporary buffers for retrieving taps of psychoacoustic opimisation filters
     std::vector<std::unique_ptr<float[]>> pfPsychIR;
@@ -178,7 +178,7 @@ bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSi
         // Convert the impulse responses to the frequency domain
         memcpy(m_pfScratchBufferA, pfPsychIR[i_m].get(), m_nTaps * sizeof(float));
         memset(&m_pfScratchBufferA[m_nTaps], 0, (m_nFFTSize - m_nTaps) * sizeof(float));
-        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_ppcpPsychFilters[i_m]);
+        kiss_fftr_wrap(m_pFFT_psych_cfg, m_pfScratchBufferA, m_ppcpPsychFilters[i_m]);
     }
 
     return true;
@@ -511,7 +511,7 @@ void CAmbisonicProcessor::ProcessOrder3_2D(CBFormat* pBFSrcDst, unsigned nSample
 
 void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSamples)
 {
-    kiss_fft_cpx cpTemp;
+    kiss_fftw_cpx cpTemp;
 
     unsigned iChannelOrder = 0;
 
@@ -532,7 +532,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
         t_start = clock();
-        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+        kiss_fftr_wrap(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_fft += t_diff;
@@ -556,7 +556,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         t_start = clock();
         // Convert from frequency domain back to time domain
-        kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+        kiss_fftri_wrap(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
         t_end = clock();
         t_diff = double(t_end - t_start);
         t_psycho_ifft += t_diff;

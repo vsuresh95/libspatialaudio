@@ -22,7 +22,7 @@
 
 #include "AmbisonicDecoder.h"
 #include "AmbisonicEncoder.h"
-#include "kiss_fftr.h"
+#include "kiss_fft_wrap.h"
 
 #include "mit_hrtf.h"
 #include "sofa_hrtf.h"
@@ -76,8 +76,8 @@ protected:
 
     std::unique_ptr<struct kiss_fftr_state, decltype(&kiss_fftr_free)> m_pFFT_cfg;
     std::unique_ptr<struct kiss_fftr_state, decltype(&kiss_fftr_free)> m_pIFFT_cfg;
-    std::vector<std::unique_ptr<kiss_fft_cpx[]>> m_ppcpFilters[2];
-    std::unique_ptr<kiss_fft_cpx[]> m_pcpScratch;
+    std::vector<std::unique_ptr<kiss_fftw_cpx[]>> m_ppcpFilters[2];
+    std::unique_ptr<kiss_fftw_cpx[]> m_pcpScratch;
 
     std::vector<float> m_pfScratchBufferA;
     std::vector<float> m_pfScratchBufferB;

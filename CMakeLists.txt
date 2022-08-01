@@ -50,6 +50,7 @@ list(APPEND headers
     include/normal/mit_hrtf_normal_96000.h
     source/kiss_fft/kiss_fftr.h
     source/kiss_fft/kiss_fft.h
+    source/kiss_fft/kiss_fft_wrap.h
 )
 
 list(APPEND sources
@@ -67,6 +68,7 @@ list(APPEND sources
     source/SpeakersBinauralizer.cpp
     source/kiss_fft/kiss_fftr.c
     source/kiss_fft/kiss_fft.c
+    source/kiss_fft/kiss_fft_wrap.c
     source/AmbisonicBase.cpp
     source/AmbisonicSpeaker.cpp
     source/AmbisonicEncoderDist.cpp

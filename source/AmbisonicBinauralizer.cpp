@@ -179,7 +179,7 @@ bool CAmbisonicBinauralizer::Configure(unsigned nOrder,
         {
             memcpy(m_pfScratchBufferA.data(), ppfAccumulator[niEar][niChannel], m_nTaps * sizeof(float));
             memset(&m_pfScratchBufferA[m_nTaps], 0, (m_nFFTSize - m_nTaps) * sizeof(float));
-            kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferA.data(), m_ppcpFilters[niEar][niChannel].get());
+            kiss_fftr_wrap(m_pFFT_cfg.get(), m_pfScratchBufferA.data(), m_ppcpFilters[niEar][niChannel].get());
         }
     }
 
@@ -214,7 +214,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
     unsigned niEar = 0;
     unsigned niChannel = 0;
     unsigned ni = 0;
-    kiss_fft_cpx cpTemp;
+    kiss_fftw_cpx cpTemp;
 
 
     /* If CPU load needs to be reduced then perform the convolution for each of the Ambisonics/spherical harmonic
@@ -241,7 +241,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
         {
             memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
             memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
-            kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
+            kiss_fftr_wrap(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
             for(ni = 0; ni < m_nFFTBins; ni++)
             {
                 cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
@@ -250,7 +250,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                             + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
                 m_pcpScratch[ni] = cpTemp;
             }
-            kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
+            kiss_fftri_wrap(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
             for(ni = 0; ni < m_nFFTSize; ni++)
                 m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
 
@@ -296,7 +296,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
                 t_start = clock();
-                kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
+                kiss_fftr_wrap(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
                 t_end = clock();
                 t_diff = double(t_end - t_start);
                 t_decode_fft += t_diff;
@@ -318,7 +318,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 t_decode_filter += t_diff;
 
                 t_start = clock();
-                kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
+                kiss_fftri_wrap(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
                 t_end = clock();
                 t_diff = double(t_end - t_start);
                 t_decode_ifft += t_diff;
@@ -416,8 +416,8 @@ void CAmbisonicBinauralizer::AllocateBuffers()
     {
         m_ppcpFilters[niEar].resize(m_nChannelCount);
         for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++)
-            m_ppcpFilters[niEar][niChannel].reset(new kiss_fft_cpx[m_nFFTBins]);
+            m_ppcpFilters[niEar][niChannel].reset(new kiss_fftw_cpx[m_nFFTBins]);
     }
 
-    m_pcpScratch.reset(new kiss_fft_cpx[m_nFFTBins]);
+    m_pcpScratch.reset(new kiss_fftw_cpx[m_nFFTBins]);
 }

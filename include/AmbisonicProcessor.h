@@ -19,7 +19,7 @@
 
 #include "AmbisonicBase.h"
 #include "BFormat.h"
-#include "kiss_fftr.h"
+#include "kiss_fft_wrap.h"
 #include "AmbisonicPsychoacousticFilters.h"
 #include "AmbisonicZoomer.h"
 
@@ -171,8 +171,8 @@ protected:
     unsigned m_nFFTBins;
     float m_fFFTScaler;
 
-    kiss_fft_cpx** m_ppcpPsychFilters;
-    kiss_fft_cpx* m_pcpScratch;
+    kiss_fftw_cpx** m_ppcpPsychFilters;
+    kiss_fftw_cpx* m_pcpScratch;
 
     float m_fCosAlpha;
     float m_fSinAlpha;

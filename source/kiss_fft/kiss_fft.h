@@ -33,6 +33,7 @@ extern "C" {
 #define KISS_FFT_FREE free
 #endif
 
+#define FIXED_POINT 32
 
 #ifdef FIXED_POINT
 #include <sys/types.h>
