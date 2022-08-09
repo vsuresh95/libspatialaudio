@@ -42,6 +42,95 @@ void kiss_fftr_wrap(kiss_fftr_cfg st, const kiss_fftw_scalar *timedata, kiss_fft
         scalarTemp[niSample] = float_to_fixed32((kiss_fftw_scalar) timedata[niSample], INT_BITS);
     }
 
+    // TODO: REMOVE AFTER CHECKING FXP CORRECTNESS
+    kiss_fftw_scalar sample_1 = timedata[0];
+    kiss_fftw_scalar sample_2 = timedata[1];
+
+    printf("sample_1 = %f sample_2 = %f\n", sample_1, sample_2);
+
+    kiss_fft_scalar sample_1_fx = float_to_fixed32((kiss_fftw_scalar) sample_1, INT_BITS);
+    kiss_fft_scalar sample_2_fx = float_to_fixed32((kiss_fftw_scalar) sample_2, INT_BITS);
+
+    printf("sample_1_fx = %x sample_2_fx = %x\n", sample_1_fx, sample_2_fx);
+
+    kiss_fft_cpx sample_1_cpx, sample_2_cpx;
+    sample_1_cpx.r = sample_1_fx;
+    sample_1_cpx.i = sample_2_fx;
+    sample_2_cpx.r = sample_1_fx;
+    sample_2_cpx.i = sample_2_fx;
+
+    C_FIXDIV(sample_1_cpx, 2);
+
+    printf("After div sample_1_cpx = R:%x I:%x\n", sample_1_cpx.r, sample_1_cpx.i);
+    kiss_fftw_scalar div_fp_r = (kiss_fftw_scalar) fixed32_to_float(sample_1_cpx.r, INT_BITS);
+    kiss_fftw_scalar div_fp_i = (kiss_fftw_scalar) fixed32_to_float(sample_1_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", div_fp_r, div_fp_i);
+    kiss_fftw_scalar div_exp_r = sample_1/2;
+    kiss_fftw_scalar div_exp_i = sample_2/2;
+    printf("Expected = R:%f I:%f\n", div_exp_r, div_exp_i);
+    
+    C_MULBYSCALAR(sample_1_cpx, float_to_fixed32((kiss_fftw_scalar) 2, INT_BITS));
+
+    printf("After mulby sample_1_cpx = R:%x I:%x\n", sample_1_cpx.r, sample_1_cpx.i);
+    kiss_fftw_scalar mulby_fp_r = (kiss_fftw_scalar) fixed32_to_float(sample_1_cpx.r, INT_BITS);
+    kiss_fftw_scalar mulby_fp_i = (kiss_fftw_scalar) fixed32_to_float(sample_1_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", mulby_fp_r, mulby_fp_i);
+    kiss_fftw_scalar mulby_exp_r = div_exp_r*2;
+    kiss_fftw_scalar mulby_exp_i = div_exp_i*2;
+    printf("Expected = R:%f I:%f\n", mulby_exp_r, mulby_exp_i);
+
+    kiss_fft_cpx mul_cpx;
+    C_MUL(mul_cpx, sample_1_cpx, sample_2_cpx);
+
+    printf("mul_cpx = R:%x I:%x\n", mul_cpx.r, mul_cpx.i);
+    kiss_fftw_scalar mul_fp_r = (kiss_fftw_scalar) fixed32_to_float(mul_cpx.r, INT_BITS);
+    kiss_fftw_scalar mul_fp_i = (kiss_fftw_scalar) fixed32_to_float(mul_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", mul_fp_r, mul_fp_i);
+    kiss_fftw_scalar mul_exp_r = (mulby_exp_r*sample_1) - (mulby_exp_i*sample_2);
+    kiss_fftw_scalar mul_exp_i = (mulby_exp_r*sample_2) + (mulby_exp_i*sample_1);
+    printf("Expected = R:%f I:%f\n", mul_exp_r, mul_exp_i);
+
+    kiss_fft_cpx sub_cpx;
+    C_SUB(sub_cpx, mul_cpx, sample_1_cpx);
+
+    printf("sub_cpx = R:%x I:%x\n", sub_cpx.r, sub_cpx.i);
+    kiss_fftw_scalar sub_fp_r = (kiss_fftw_scalar) fixed32_to_float(sub_cpx.r, INT_BITS);
+    kiss_fftw_scalar sub_fp_i = (kiss_fftw_scalar) fixed32_to_float(sub_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", sub_fp_r, sub_fp_i);
+    kiss_fftw_scalar sub_exp_r = mul_exp_r - mulby_exp_r;
+    kiss_fftw_scalar sub_exp_i = mul_exp_i - mulby_exp_i;
+    printf("Expected = R:%f I:%f\n", sub_exp_r, sub_exp_i);
+
+    C_ADDTO(sub_cpx, sample_2_cpx);
+
+    printf("sub_cpx = R:%x I:%x\n", sub_cpx.r, sub_cpx.i);
+    sub_fp_r = (kiss_fftw_scalar) fixed32_to_float(sub_cpx.r, INT_BITS);
+    sub_fp_i = (kiss_fftw_scalar) fixed32_to_float(sub_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", sub_fp_r, sub_fp_i);
+    kiss_fftw_scalar addto_exp_r = sub_exp_r + sample_1;
+    kiss_fftw_scalar addto_exp_i = sub_exp_i + sample_2;
+    printf("Expected = R:%f I:%f\n", addto_exp_r, addto_exp_i);
+
+    kiss_fft_cpx add_cpx;
+    C_ADD(add_cpx, sub_cpx, sample_2_cpx);
+
+    printf("add_cpx = R:%x I:%x\n", add_cpx.r, add_cpx.i);
+    kiss_fftw_scalar add_fp_r = (kiss_fftw_scalar) fixed32_to_float(add_cpx.r, INT_BITS);
+    kiss_fftw_scalar add_fp_i = (kiss_fftw_scalar) fixed32_to_float(add_cpx.i, INT_BITS);
+    printf("Fixed to float = R:%f I:%f\n", add_fp_r, add_fp_i);
+    kiss_fftw_scalar add_exp_r = addto_exp_r + sample_1;
+    kiss_fftw_scalar add_exp_i = addto_exp_i + sample_2;
+    printf("Expected = R:%f I:%f\n", add_exp_r, add_exp_i);
+
+    kiss_fft_scalar half_cpx;
+    half_cpx = HALF_OF(sample_2_fx);
+
+    printf("half_cpx = %x\n", half_cpx);
+    kiss_fftw_scalar half_fp = (kiss_fftw_scalar) fixed32_to_float(half_cpx, INT_BITS);
+    printf("Fixed to float = %f\n", half_fp);
+    kiss_fftw_scalar half_exp_i = sample_2/2;
+    printf("Expected = %f\n", half_exp_i);
+
     kiss_fftr(st, scalarTemp, cpxTemp);
 
     // Fixed to float conversion
