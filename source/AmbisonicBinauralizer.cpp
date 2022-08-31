@@ -33,6 +33,15 @@ extern double t_decode_ifft2_acc;
 
 extern unsigned do_fft2_acc_offload;
 
+extern double t_chain_acc_mgmt;
+extern double t_chain_acc;
+extern double t_decode_chain_acc_mgmt;
+extern double t_decode_chain_acc;
+extern double t_decode_chain;
+
+extern unsigned do_chain_acc_offload;
+extern void chain_acc_offload(kiss_fftr_cfg cfg, kiss_fft_cpx *fin, const kiss_fft_cpx *flt);
+
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
     , m_pIFFT_cfg(nullptr, kiss_fftr_free)
@@ -295,36 +304,47 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
-                t_start = clock();
-                kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
-                t_end = clock();
-                t_diff = double(t_end - t_start);
-                t_decode_fft += t_diff;
+                if (do_chain_acc_offload) {
+                    t_start = clock();
+                    kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
+                    t_end = clock();
+                    t_diff = double(t_end - t_start);
+                    t_decode_fft += t_diff;
 
-                t_decode_fft2_acc += t_fft2_acc;
-                t_decode_fft2_acc_mgmt += t_fft2_acc_mgmt;
+                    t_decode_fft2_acc += t_fft2_acc;
+                    t_decode_fft2_acc_mgmt += t_fft2_acc_mgmt;
 
-                t_start = clock();
-                for(ni = 0; ni < m_nFFTBins; ni++)
-                {
-                    cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
-                                - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
-                    cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
-                                + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
-                    m_pcpScratch[ni] = cpTemp;
-                }
-                t_end = clock();
-                t_diff = double(t_end - t_start);
-                t_decode_filter += t_diff;
+                    t_start = clock();
+                    for(ni = 0; ni < m_nFFTBins; ni++)
+                    {
+                        cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
+                                    - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
+                        cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
+                                    + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
+                        m_pcpScratch[ni] = cpTemp;
+                    }
+                    t_end = clock();
+                    t_diff = double(t_end - t_start);
+                    t_decode_filter += t_diff;
 
-                t_start = clock();
-                kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
-                t_end = clock();
-                t_diff = double(t_end - t_start);
-                t_decode_ifft += t_diff;
+                    t_start = clock();
+                    kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
+                    t_end = clock();
+                    t_diff = double(t_end - t_start);
+                    t_decode_ifft += t_diff;
                 
-                t_decode_ifft2_acc += t_fft2_acc;
-                t_decode_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+                    t_decode_ifft2_acc += t_fft2_acc;
+                    t_decode_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+                } else {
+                    t_start = clock();
+                    chain_acc_offload(m_pFFT_cfg.get(), (kiss_fft_cpx*) m_pfScratchBufferB.data(), (const kiss_fft_cpx*) m_ppcpFilters[niEar][niChannel].get());
+                    t_end = clock();
+                    t_diff = double(t_end - t_start);
+                    t_decode_chain += t_diff;
+
+                    t_decode_chain_acc += t_chain_acc;
+                    t_decode_chain_acc_mgmt += t_chain_acc_mgmt;                    
+                }
 
                 for(ni = 0; ni < m_nFFTSize; ni++)
                     m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];

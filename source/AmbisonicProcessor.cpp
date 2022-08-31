@@ -32,13 +32,20 @@ extern double t_psycho_fft2_acc;
 extern double t_psycho_ifft2_acc_mgmt;
 extern double t_psycho_ifft2_acc;
 
+extern double t_chain_acc_mgmt;
+extern double t_chain_acc;
+extern double t_psycho_chain_acc_mgmt;
+extern double t_psycho_chain_acc;
+extern double t_psycho_chain;
+
 unsigned m_nChannelCount_copy;
 
 extern void rotate_order_acc_offload(CBFormat* pBFSrcDst, unsigned nSamples);
+extern void chain_acc_offload(kiss_fftr_cfg cfg, kiss_fft_cpx *fin, const kiss_fft_cpx *flt);
 
 extern unsigned do_fft2_acc_offload;
 extern bool do_rotate_acc_offload;
-
+extern bool do_chain_acc_offload;
 
 struct rotate_params {
     float m_fCosAlpha;
@@ -562,56 +569,67 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         // }
         // std::cout << std::endl;
         
-        t_start = clock();
-        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_psycho_fft += t_diff;
+        if (do_chain_acc_offload) {
+            t_start = clock();
+            kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_psycho_fft += t_diff;
 
-        t_psycho_fft2_acc += t_fft2_acc;
-        t_psycho_fft2_acc_mgmt += t_fft2_acc_mgmt;
+            t_psycho_fft2_acc += t_fft2_acc;
+            t_psycho_fft2_acc_mgmt += t_fft2_acc_mgmt;
 
-        // std::cout << "After FFT " << std::endl;
-        // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
-        // {
-        //     if (niSample % 4 == 0) std::cout << std::endl;
-        //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
-        //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
-        // }
-        // std::cout << std::endl;
+            // std::cout << "After FFT " << std::endl;
+            // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
+            // {
+            //     if (niSample % 4 == 0) std::cout << std::endl;
+            //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
+            //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
+            // }
+            // std::cout << std::endl;
 
-        t_start = clock();
-        // Perform the convolution in the frequency domain
-        for(unsigned ni = 0; ni < m_nFFTBins; ni++)
-        {
-            cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
-                        - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
-            cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
-                        + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
-            m_pcpScratch[ni] = cpTemp;
+            t_start = clock();
+            // Perform the convolution in the frequency domain
+            for(unsigned ni = 0; ni < m_nFFTBins; ni++)
+            {
+                cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
+                            - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
+                cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
+                            + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
+                m_pcpScratch[ni] = cpTemp;
+            }
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_psycho_filter += t_diff;
+
+            // std::cout << "Before IFFT " << std::endl;
+            // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
+            // {
+            //     if (niSample % 4 == 0) std::cout << std::endl;
+            //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
+            //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
+            // }
+            // std::cout << std::endl;
+
+            t_start = clock();
+            // Convert from frequency domain back to time domain
+            kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_psycho_ifft += t_diff;
+
+            t_psycho_ifft2_acc += t_fft2_acc;
+            t_psycho_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+        } else {
+            t_start = clock();
+            chain_acc_offload(m_pFFT_psych_cfg, (kiss_fft_cpx*) m_pfScratchBufferA, (const kiss_fft_cpx*) m_ppcpPsychFilters[iChannelOrder]);
+            t_end = clock();
+            t_diff = double(t_end - t_start);
+            t_psycho_chain += t_diff;
+
+            t_psycho_chain_acc += t_chain_acc;
+            t_psycho_chain_acc_mgmt += t_chain_acc_mgmt;
         }
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_psycho_filter += t_diff;
-
-        // std::cout << "Before IFFT " << std::endl;
-        // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
-        // {
-        //     if (niSample % 4 == 0) std::cout << std::endl;
-        //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
-        //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
-        // }
-        // std::cout << std::endl;
-
-        t_start = clock();
-        // Convert from frequency domain back to time domain
-        kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
-        t_end = clock();
-        t_diff = double(t_end - t_start);
-        t_psycho_ifft += t_diff;
-
-        t_psycho_ifft2_acc += t_fft2_acc;
-        t_psycho_ifft2_acc_mgmt += t_fft2_acc_mgmt;
 
         // std::cout << "After IFFT " << std::endl;
         // // Copying buffer from fin to buf
