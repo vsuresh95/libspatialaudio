@@ -569,7 +569,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         // }
         // std::cout << std::endl;
         
-        if (do_chain_acc_offload) {
+        if (!do_chain_acc_offload) {
             t_start = clock();
             kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
             t_end = clock();

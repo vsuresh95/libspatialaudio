@@ -304,7 +304,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
-                if (do_chain_acc_offload) {
+                if (!do_chain_acc_offload) {
                     t_start = clock();
                     kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
                     t_end = clock();
