@@ -244,6 +244,17 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
         // No filtering required
     }
 
+    // std::cout << "Before rotate " << std::endl;
+    // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++)
+    // {
+    //     for(unsigned niSample = 0; niSample < nSamples; niSample++)
+    //     {
+    //         if (niSample % 8 == 0) std::cout << std::endl;
+    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << ", ";
+    //     }
+    //     std::cout << std::endl;
+    // }
+
     if (do_rotate_acc_offload)
     {
         rotate_params_inst.m_fCosAlpha = m_fCosAlpha;
@@ -295,6 +306,17 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
             t_rotate3 += t_diff;
         }
     }
+    
+    // std::cout << "After rotate " << std::endl;
+    // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++)
+    // {
+    //     for(unsigned niSample = 0; niSample < nSamples; niSample++)
+    //     {
+    //         if (niSample % 8 == 0) std::cout << std::endl;
+    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << ", ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 }
 
 void CAmbisonicProcessor::ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples)
@@ -531,6 +553,15 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
+        // std::cout << "Before IFFT " << std::endl;
+        // // Copying buffer from fin to buf
+        // for(unsigned niSample = 0; niSample < m_nFFTSize; niSample++)
+        // {
+        //     if (niSample % 8 == 0) std::cout << std::endl;
+        //     std::cout << m_pfScratchBufferA[niSample] << ", ";
+        // }
+        // std::cout << std::endl;
+        
         t_start = clock();
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         t_end = clock();
@@ -539,6 +570,15 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         t_psycho_fft2_acc += t_fft2_acc;
         t_psycho_fft2_acc_mgmt += t_fft2_acc_mgmt;
+
+        // std::cout << "After FFT " << std::endl;
+        // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
+        // {
+        //     if (niSample % 4 == 0) std::cout << std::endl;
+        //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
+        //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
+        // }
+        // std::cout << std::endl;
 
         t_start = clock();
         // Perform the convolution in the frequency domain
@@ -554,6 +594,15 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         t_diff = double(t_end - t_start);
         t_psycho_filter += t_diff;
 
+        // std::cout << "Before IFFT " << std::endl;
+        // for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++)
+        // {
+        //     if (niSample % 4 == 0) std::cout << std::endl;
+        //     std::cout << "R: " << m_pcpScratch[niSample].r << ", ";
+        //     std::cout << "I: " << m_pcpScratch[niSample].i << ", ";
+        // }
+        // std::cout << std::endl;
+
         t_start = clock();
         // Convert from frequency domain back to time domain
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
@@ -564,6 +613,15 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         t_psycho_ifft2_acc += t_fft2_acc;
         t_psycho_ifft2_acc_mgmt += t_fft2_acc_mgmt;
 
+        // std::cout << "After IFFT " << std::endl;
+        // // Copying buffer from fin to buf
+        // for(unsigned niSample = 0; niSample < m_nFFTSize; niSample++)
+        // {
+        //     if (niSample % 8 == 0) std::cout << std::endl;
+        //     std::cout << m_pfScratchBufferA[niSample] << ", ";
+        // }
+        // std::cout << std::endl;
+        
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;
                 memcpy(pBFSrcDst->m_ppfChannels[niChannel], m_pfScratchBufferA, m_nBlockSize * sizeof(float));
