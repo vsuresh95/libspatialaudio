@@ -64,6 +64,12 @@ public:
     */
     void Process(CBFormat* pBFSrc, float** ppfDst);
 
+    std::map<int, int> fft_input_precision_values;
+    std::map<int, int> fir_input_precision_values;
+    std::map<int, int> ifft_input_precision_values;
+    std::map<int, int> overlap_input_precision_values;
+    std::map<int, int> overlap_output_precision_values;
+
 protected:
     CAmbisonicDecoder m_AmbDecoder;
 

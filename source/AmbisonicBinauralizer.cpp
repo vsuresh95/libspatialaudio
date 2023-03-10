@@ -33,6 +33,9 @@ extern double t_decode_ifft2_acc;
 
 extern unsigned do_fft2_acc_offload;
 
+extern void get_precision_values(std::map<int, int> &precision_values, float *buffer_to_check, int num_values);
+extern void print_precision_values(std::string print_message, std::map<int, int> &precision_values);
+
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
     , m_pIFFT_cfg(nullptr, kiss_fftr_free)
@@ -295,6 +298,8 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
+                get_precision_values(fft_input_precision_values, m_pfScratchBufferB.data(), m_nBlockSize);
+
                 t_start = clock();
                 kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
                 t_end = clock();
@@ -303,6 +308,8 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
 
                 t_decode_fft2_acc += t_fft2_acc;
                 t_decode_fft2_acc_mgmt += t_fft2_acc_mgmt;
+
+                get_precision_values(fir_input_precision_values, (float *) m_pcpScratch.get(), 2 * m_nFFTBins);
 
                 t_start = clock();
                 for(ni = 0; ni < m_nFFTBins; ni++)
@@ -317,6 +324,8 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 t_diff = double(t_end - t_start);
                 t_decode_filter += t_diff;
 
+                get_precision_values(ifft_input_precision_values, (float *) m_pcpScratch.get(), 2 * m_nFFTBins);
+
                 t_start = clock();
                 kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
                 t_end = clock();
@@ -325,6 +334,8 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 
                 t_decode_ifft2_acc += t_fft2_acc;
                 t_decode_ifft2_acc_mgmt += t_fft2_acc_mgmt;
+
+                get_precision_values(overlap_input_precision_values, m_pfScratchBufferB.data(), m_nFFTSize);
 
                 for(ni = 0; ni < m_nFFTSize; ni++)
                     m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
@@ -335,8 +346,16 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             for(ni = 0; ni < m_nOverlapLength; ni++)
                 ppfDst[niEar][ni] += m_pfOverlap[niEar][ni];
             memcpy(m_pfOverlap[niEar].data(), &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
+
+            get_precision_values(overlap_output_precision_values, ppfDst[niEar], m_nBlockSize);
         }
     }
+
+    print_precision_values("AmbisonicBinauralizer.cpp FFT input", fft_input_precision_values);
+    print_precision_values("AmbisonicBinauralizer.cpp FIR input", fir_input_precision_values);
+    print_precision_values("AmbisonicBinauralizer.cpp IFFT input", ifft_input_precision_values);
+    print_precision_values("AmbisonicBinauralizer.cpp Overlap input", overlap_input_precision_values);
+    print_precision_values("AmbisonicBinauralizer.cpp Overlap output", overlap_output_precision_values);
 }
 
 void CAmbisonicBinauralizer::ArrangeSpeakers()

@@ -39,6 +39,8 @@ extern void rotate_order_acc_offload(CBFormat* pBFSrcDst, unsigned nSamples);
 extern unsigned do_fft2_acc_offload;
 extern bool do_rotate_acc_offload;
 
+extern void get_precision_values(std::map<int, int> &precision_values, float *buffer_to_check, int num_values);
+extern void print_precision_values(std::string print_message, std::map<int, int> &precision_values);
 
 struct rotate_params {
     float m_fCosAlpha;
@@ -294,6 +296,11 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
             t_diff = double(t_end - t_start);
             t_rotate3 += t_diff;
         }
+
+        for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            get_precision_values(rotate_output_precision_values, pBFSrcDst->m_ppfChannels[niChannel], nSamples);
+        }
+        print_precision_values("AmbisonicProcessor.cpp Rotate output", rotate_output_precision_values);
     }
 }
 
@@ -531,6 +538,8 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
+        get_precision_values(fft_input_precision_values, m_pfScratchBufferA, m_nBlockSize);
+
         t_start = clock();
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         t_end = clock();
@@ -539,6 +548,8 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         t_psycho_fft2_acc += t_fft2_acc;
         t_psycho_fft2_acc_mgmt += t_fft2_acc_mgmt;
+
+        get_precision_values(fir_input_precision_values, (float *) m_pcpScratch, 2 * m_nFFTBins);
 
         t_start = clock();
         // Perform the convolution in the frequency domain
@@ -554,6 +565,8 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         t_diff = double(t_end - t_start);
         t_psycho_filter += t_diff;
 
+        get_precision_values(ifft_input_precision_values, (float *) m_pcpScratch, 2 * m_nFFTBins);
+
         t_start = clock();
         // Convert from frequency domain back to time domain
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
@@ -564,6 +577,8 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         t_psycho_ifft2_acc += t_fft2_acc;
         t_psycho_ifft2_acc_mgmt += t_fft2_acc_mgmt;
 
+        get_precision_values(overlap_input_precision_values, m_pfScratchBufferA, m_nBlockSize + m_nOverlapLength);
+
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;
                 memcpy(pBFSrcDst->m_ppfChannels[niChannel], m_pfScratchBufferA, m_nBlockSize * sizeof(float));
@@ -572,5 +587,13 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                         pBFSrcDst->m_ppfChannels[niChannel][ni] += m_pfOverlap[niChannel][ni];
                 }
                 memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
+
+        get_precision_values(overlap_output_precision_values, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize);
     }
+
+    print_precision_values("AmbisonicProcessor.cpp FFT input", fft_input_precision_values);
+    print_precision_values("AmbisonicProcessor.cpp FIR input", fir_input_precision_values);
+    print_precision_values("AmbisonicProcessor.cpp IFFT input", ifft_input_precision_values);
+    print_precision_values("AmbisonicProcessor.cpp Overlap input", overlap_input_precision_values);
+    print_precision_values("AmbisonicProcessor.cpp Overlap output", overlap_output_precision_values);
 }

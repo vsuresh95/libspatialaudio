@@ -145,6 +145,13 @@ public:
     */
     void Process(CBFormat* pBFSrcDst, unsigned nSamples);
 
+    std::map<int, int> fft_input_precision_values;
+    std::map<int, int> fir_input_precision_values;
+    std::map<int, int> ifft_input_precision_values;
+    std::map<int, int> overlap_input_precision_values;
+    std::map<int, int> overlap_output_precision_values;
+    std::map<int, int> rotate_output_precision_values;
+
 private:
     void ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples);
     void ProcessOrder2_3D(CBFormat* pBFSrcDst, unsigned nSamples);
