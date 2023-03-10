@@ -64,6 +64,8 @@ public:
     */
     void Process(CBFormat* pBFSrc, float** ppfDst);
 
+    void PrintTimeInfo(unsigned factor);
+    
 protected:
     CAmbisonicDecoder m_AmbDecoder;
 

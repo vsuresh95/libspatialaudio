@@ -278,7 +278,12 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             {
                 memcpy(m_pfScratchBufferB.data(), pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                 memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+
+                StartCounter();
                 kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB.data(), m_pcpScratch.get());
+                EndCounter(0);
+
+                StartCounter();
                 for(ni = 0; ni < m_nFFTBins; ni++)
                 {
                     cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
@@ -287,7 +292,12 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                                 + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
                     m_pcpScratch[ni] = cpTemp;
                 }
+                EndCounter(1);
+
+                StartCounter();
                 kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch.get(), m_pfScratchBufferB.data());
+                EndCounter(2);
+
                 for(ni = 0; ni < m_nFFTSize; ni++)
                     m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
             }
@@ -382,4 +392,15 @@ void CAmbisonicBinauralizer::AllocateBuffers()
     }
 
     m_pcpScratch.reset(new kiss_fft_cpx[m_nFFTBins]);
+}
+
+void CAmbisonicBinauralizer::PrintTimeInfo(unsigned factor) {
+    printf("---------------------------------------------\n");
+    printf("TOTAL TIME FROM BINAURALIZER\n");
+    printf("---------------------------------------------\n");
+    printf("Binaur FFT\t = %llu\n", TotalTime[0]/factor);
+    printf("Binaur FIR\t = %llu\n", TotalTime[1]/factor);
+    printf("Binaur IFFT\t = %llu\n", TotalTime[2]/factor);
+
+    printf("\n");
 }

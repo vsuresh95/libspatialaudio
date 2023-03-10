@@ -17,6 +17,9 @@
 #define    _AMBISONIC_BASE_H
 
 #include "AmbisonicCommons.h"
+#include "CohDefines.h"
+
+#define N_TIME_MARKERS 10
 
 /// Ambisonic base class.
 
@@ -55,6 +58,16 @@ public:
         Not implemented.
     */
     virtual void Refresh() = 0;
+
+    // Time markers to capture time and save them
+    unsigned long long StartTime;
+    unsigned long long EndTime;
+    unsigned long long TotalTime[N_TIME_MARKERS];
+
+    // Helper function to start timer, end timer and
+    // capture the difference in TotalTime[Index].
+    void StartCounter();
+    void EndCounter(unsigned Index);
 
 protected:
     unsigned m_nOrder;

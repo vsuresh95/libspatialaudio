@@ -192,12 +192,21 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     }
 
     /* 3D Ambisonics input expected so perform 3D rotations */
-    if(m_nOrder >= 1)
+    if(m_nOrder >= 1) {
+        StartCounter();
         ProcessOrder1_3D(pBFSrcDst, nSamples);
-    if(m_nOrder >= 2)
+        EndCounter(3);
+    }
+    if(m_nOrder >= 2) {
+        StartCounter();
         ProcessOrder2_3D(pBFSrcDst, nSamples);
-    if(m_nOrder >= 3)
+        EndCounter(4);
+    }
+    if(m_nOrder >= 3) {
+        StartCounter();
         ProcessOrder3_3D(pBFSrcDst, nSamples);
+        EndCounter(5);
+    }
 }
 
 void CAmbisonicProcessor::ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples)
@@ -430,8 +439,13 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
         memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+
+        StartCounter();
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+        EndCounter(0);
+
         // Perform the convolution in the frequency domain
+        StartCounter();
         for(unsigned ni = 0; ni < m_nFFTBins; ni++)
         {
             cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
@@ -440,8 +454,13 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                         + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
             m_pcpScratch[ni] = cpTemp;
         }
+        EndCounter(1);
+
         // Convert from frequency domain back to time domain
+        StartCounter();
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+        EndCounter(2);
+
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;
                 memcpy(pBFSrcDst->m_ppfChannels[niChannel], m_pfScratchBufferA, m_nBlockSize * sizeof(float));
@@ -451,4 +470,18 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                 }
                 memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
     }
+}
+
+void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
+    printf("---------------------------------------------\n");
+    printf("TOTAL TIME FROM PSYCHOACOUSTIC FILTER\n");
+    printf("---------------------------------------------\n");
+    printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);
+    printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
+    printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
+    printf("Rotate O1\t = %llu\n", TotalTime[3]/factor);
+    printf("Rotate O2\t = %llu\n", TotalTime[4]/factor);
+    printf("Rotate O3\t = %llu\n", TotalTime[5]/factor);
+
+    printf("\n");
 }

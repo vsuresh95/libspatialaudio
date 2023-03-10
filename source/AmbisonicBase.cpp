@@ -40,9 +40,39 @@ unsigned CAmbisonicBase::GetChannelCount()
 
 bool CAmbisonicBase::Configure(unsigned nOrder, bool b3D, unsigned nMisc)
 {
+    StartTime = 0;
+    EndTime = 0;
+
+	for (unsigned i = 0; i < N_TIME_MARKERS; i++)
+    	TotalTime[i] = 0;
+
     m_nOrder = nOrder;
     m_b3D = b3D;
     m_nChannelCount = OrderToComponents(m_nOrder, m_b3D);
 
     return true;
+}
+
+void CAmbisonicBase::StartCounter() {
+	asm volatile (
+		"li t0, 0;"
+		"csrr t0, cycle;"
+		"mv %0, t0"
+		: "=r" (StartTime)
+		:
+		: "t0"
+	);
+}
+
+void CAmbisonicBase::EndCounter(unsigned Index) {
+	asm volatile (
+		"li t0, 0;"
+		"csrr t0, cycle;"
+		"mv %0, t0"
+		: "=r" (EndTime)
+		:
+		: "t0"
+	);
+
+    TotalTime[Index] += EndTime - StartTime;
 }
