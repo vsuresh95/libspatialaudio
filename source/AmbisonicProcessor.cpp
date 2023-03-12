@@ -33,27 +33,10 @@ CAmbisonicProcessor::~CAmbisonicProcessor()
 {
     if(m_pfTempSample)
         delete [] m_pfTempSample;
-    if(m_pfScratchBufferA)
-        delete [] m_pfScratchBufferA;
     if(m_pFFT_psych_cfg)
         kiss_fftr_free(m_pFFT_psych_cfg);
     if(m_pIFFT_psych_cfg)
         kiss_fftr_free(m_pIFFT_psych_cfg);
-    if (m_ppcpPsychFilters)
-    {
-        for(unsigned i=0; i<=m_nOrder; i++)
-            if(m_ppcpPsychFilters[i])
-                delete [] m_ppcpPsychFilters[i];
-        delete [] m_ppcpPsychFilters;
-    }
-    if(m_pcpScratch)
-        delete [] m_pcpScratch;
-    if(m_pfOverlap){
-        for(unsigned i=0; i<m_nChannelCount; i++)
-            if(m_pfOverlap[i])
-                delete [] m_pfOverlap[i];
-        delete [] m_pfOverlap;
-    }
 }
 
 bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSize, unsigned nMisc)
@@ -87,16 +70,16 @@ bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSi
     m_fFFTScaler = 1.f / m_nFFTSize;
 
     //Allocate buffers
-        m_pfOverlap = new float*[m_nChannelCount];
+    m_pfOverlap = (float **) esp_alloc(m_nChannelCount * sizeof(float *));
     for(unsigned i=0; i<m_nChannelCount; i++)
-        m_pfOverlap[i] = new float[m_nOverlapLength];
+        m_pfOverlap[i] = (float *) esp_alloc(m_nOverlapLength * sizeof(float));
 
-    m_pfScratchBufferA = new float[m_nFFTSize];
-    m_ppcpPsychFilters = new kiss_fft_cpx*[m_nOrder+1];
+    m_pfScratchBufferA = (float *) esp_alloc(m_nFFTSize * sizeof(float));
+    m_ppcpPsychFilters = (kiss_fft_cpx **) esp_alloc((m_nOrder+1) * sizeof(kiss_fft_cpx *));
     for(unsigned i = 0; i <= m_nOrder; i++)
-        m_ppcpPsychFilters[i] = new kiss_fft_cpx[m_nFFTBins];
+        m_ppcpPsychFilters[i] = (kiss_fft_cpx *) esp_alloc(m_nFFTBins * sizeof(kiss_fft_cpx));
 
-    m_pcpScratch = new kiss_fft_cpx[m_nFFTBins];
+    m_pcpScratch = (kiss_fft_cpx *) esp_alloc(m_nFFTBins * sizeof(kiss_fft_cpx));
 
     //Allocate temporary buffers for retrieving taps of psychoacoustic opimisation filters
     std::vector<std::unique_ptr<float[]>> pfPsychIR;

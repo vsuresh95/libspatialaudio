@@ -157,7 +157,6 @@ private:
 
     void ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSamples);
 
-protected:
     Orientation m_orientation;
     float* m_pfTempSample;
 

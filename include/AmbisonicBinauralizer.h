@@ -66,7 +66,6 @@ public:
 
     void PrintTimeInfo(unsigned factor);
     
-protected:
     CAmbisonicDecoder m_AmbDecoder;
 
     unsigned m_nBlockSize;
@@ -78,13 +77,13 @@ protected:
 
     std::unique_ptr<struct kiss_fftr_state, decltype(&kiss_fftr_free)> m_pFFT_cfg;
     std::unique_ptr<struct kiss_fftr_state, decltype(&kiss_fftr_free)> m_pIFFT_cfg;
-    std::vector<std::unique_ptr<kiss_fft_cpx[]>> m_ppcpFilters[2];
-    std::unique_ptr<kiss_fft_cpx[]> m_pcpScratch;
+    kiss_fft_cpx*** m_ppcpFilters;
+    kiss_fft_cpx* m_pcpScratch;
 
-    std::vector<float> m_pfScratchBufferA;
-    std::vector<float> m_pfScratchBufferB;
-    std::vector<float> m_pfScratchBufferC;
-    std::vector<float> m_pfOverlap[2];
+    float* m_pfScratchBufferA;
+    float* m_pfScratchBufferB;
+    float* m_pfScratchBufferC;
+    float** m_pfOverlap;
 
     HRTF *getHRTF(unsigned nSampleRate, std::string HRTFPath);
     virtual void ArrangeSpeakers();

@@ -22,6 +22,7 @@ option(BUILD_STATIC_LIBS "Build static library" ON)
 include(GNUInstallDirs)
 
 list(APPEND headers
+    ${ESP_DRIVERS}/linux/include/libesp.h
     acc_include/CohDefines.h
     include/AmbisonicBase.h
     include/AmbisonicDecoderPresets.h
@@ -79,7 +80,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 find_package(MySofa QUIET)
 set(HAVE_MYSOFA ${MYSOFA_FOUND})
 
-include_directories(acc_include acc_source include include/hrtf source source/kiss_fft ${PROJECT_BINARY_DIR})
+include_directories(${ESP_DRIVERS}/common/include ${ESP_DRIVERS}/linux/include acc_include acc_source include include/hrtf source source/kiss_fft ${PROJECT_BINARY_DIR})
 
 if(${MYSOFA_FOUND})
     include_directories(${MYSOFA_INCLUDE_DIRS})

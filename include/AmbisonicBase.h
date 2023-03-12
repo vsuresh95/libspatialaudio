@@ -21,6 +21,29 @@
 
 #define N_TIME_MARKERS 10
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <libesp.h>
+#include <esp.h>
+#include <esp_accelerator.h>
+
+#ifdef __KERNEL__
+#include <linux/ioctl.h>
+#include <linux/types.h>
+#else
+#include <sys/ioctl.h>
+#include <stdint.h>
+#ifndef __user
+#define __user
+#endif
+#endif /* __KERNEL__ */
+
+#ifdef __cplusplus
+}
+#endif
+
 /// Ambisonic base class.
 
 /** This is the base class for most if not all of the classes that make up this
@@ -69,7 +92,6 @@ public:
     void StartCounter();
     void EndCounter(unsigned Index);
 
-protected:
     unsigned m_nOrder;
     bool m_b3D;
     unsigned m_nChannelCount;
