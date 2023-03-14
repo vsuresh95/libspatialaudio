@@ -17,7 +17,6 @@
 #define    _AMBISONIC_BASE_H
 
 #include "AmbisonicCommons.h"
-#include "CohDefines.h"
 
 #define N_TIME_MARKERS 10
 

@@ -17,6 +17,8 @@
 #include "AmbisonicProcessor.h"
 #include <iostream>
 
+extern void OffloadChain(CBFormat*, kiss_fft_cpx*, float*, unsigned, unsigned, bool);
+
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
 {
@@ -420,29 +422,36 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         iChannelOrder = int(sqrt(niChannel));    //get the order of the current channel
 
-        memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
-        memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+        if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
+            bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
+            StartCounter();
+            OffloadChain(pBFSrcDst, m_ppcpPsychFilters[iChannelOrder], m_pfScratchBufferA, niChannel, m_nOverlapLength, IsSharedMemory);
+            EndCounter(0);
+        } else {
+            memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
+            memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
-        StartCounter();
-        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
-        EndCounter(0);
+            StartCounter();
+            kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+            EndCounter(0);
 
-        // Perform the convolution in the frequency domain
-        StartCounter();
-        for(unsigned ni = 0; ni < m_nFFTBins; ni++)
-        {
-            cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
-                        - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
-            cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
-                        + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
-            m_pcpScratch[ni] = cpTemp;
+            // Perform the convolution in the frequency domain
+            StartCounter();
+            for(unsigned ni = 0; ni < m_nFFTBins; ni++)
+            {
+                cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
+                            - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
+                cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
+                            + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
+                m_pcpScratch[ni] = cpTemp;
+            }
+            EndCounter(1);
+
+            // Convert from frequency domain back to time domain
+            StartCounter();
+            kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+            EndCounter(2);
         }
-        EndCounter(1);
-
-        // Convert from frequency domain back to time domain
-        StartCounter();
-        kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
-        EndCounter(2);
 
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;
@@ -453,15 +462,28 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                 }
                 memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
     }
+
+    // for (unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+    //     std::cout << "Psycho Filter output sumBF.m_ppfChannels[" << niChannel << "]:" << std::endl;;
+    //     for (unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
+    //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
     printf("---------------------------------------------\n");
     printf("TOTAL TIME FROM PSYCHOACOUSTIC FILTER\n");
     printf("---------------------------------------------\n");
-    printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);
-    printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
-    printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
+    if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
+        printf("Psycho Chain\t = %llu\n", TotalTime[0]/factor);
+    } else {
+        printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);
+        printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
+        printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
+    }
     printf("Rotate O1\t = %llu\n", TotalTime[3]/factor);
     printf("Rotate O2\t = %llu\n", TotalTime[4]/factor);
     printf("Rotate O3\t = %llu\n", TotalTime[5]/factor);

@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
@@ -23,7 +23,6 @@ include(GNUInstallDirs)
 
 list(APPEND headers
     ${ESP_DRIVERS}/linux/include/libesp.h
-    acc_include/CohDefines.h
     include/AmbisonicBase.h
     include/AmbisonicDecoderPresets.h
     include/AmbisonicProcessor.h

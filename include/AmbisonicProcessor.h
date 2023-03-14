@@ -147,7 +147,6 @@ public:
 
     void PrintTimeInfo(unsigned factor);
 
-private:
     void ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples);
     void ProcessOrder2_3D(CBFormat* pBFSrcDst, unsigned nSamples);
     void ProcessOrder3_3D(CBFormat* pBFSrcDst, unsigned nSamples);
