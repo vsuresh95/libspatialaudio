@@ -75,6 +75,8 @@ bool CAmbisonicBinauralizer::Configure(unsigned nOrder,
     //Allocate buffers with new settings
     AllocateBuffers();
 
+    Reset();
+
     //Allocate temporary buffers for retrieving taps from mit_hrtf_lib
     float* pfHRTF[2];
     for(niEar = 0; niEar < 2; niEar++)
