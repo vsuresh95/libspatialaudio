@@ -18,6 +18,7 @@
 #include <iostream>
 
 extern void OffloadChain(CBFormat*, kiss_fft_cpx*, float*, unsigned, unsigned, bool);
+extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -169,7 +170,13 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     /* Before the rotation we apply the psychoacoustic optimisation filters */
     if(m_bOpt)
     {
-        ShelfFilterOrder(pBFSrcDst, nSamples);
+        if (DO_PP_CHAIN_OFFLOAD) {
+            StartCounter();
+            OffloadPsychoPipeline(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength);
+            EndCounter(0);
+        } else {
+            ShelfFilterOrder(pBFSrcDst, nSamples);
+        }
     }
     else
     {
@@ -462,15 +469,6 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                 }
                 memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
     }
-
-    // for (unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
-    //     std::cout << "Psycho Filter output sumBF.m_ppfChannels[" << niChannel << "]:" << std::endl;;
-    //     for (unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
-    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
-    //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
-    //     }
-    //     std::cout << std::endl;
-    // }
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
