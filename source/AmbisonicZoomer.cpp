@@ -15,6 +15,7 @@
 
 
 #include "AmbisonicZoomer.h"
+#include <ZoomerOptimized.hpp>
 
 #include <cstdlib>
 #include <cmath>

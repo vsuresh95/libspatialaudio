@@ -59,6 +59,7 @@ public:
         Zoom into B-Format stream.
     */
     void Process(CBFormat* pBFSrcDst, unsigned nSamples);
+    void ProcessOptimized(CBFormat* pBFSrcDst, unsigned nSamples);
     /**
         Compute factorial of integer
     */
