@@ -16,6 +16,7 @@
 
 #include "AmbisonicProcessor.h"
 #include <iostream>
+#include <RotateOrderOptimized.hpp>
 
 extern void OffloadChain(CBFormat*, kiss_fft_cpx*, float*, unsigned, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
@@ -186,17 +187,17 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     /* 3D Ambisonics input expected so perform 3D rotations */
     if(m_nOrder >= 1) {
         StartCounter();
-        ProcessOrder1_3D(pBFSrcDst, nSamples);
+        ProcessOrder1_3D_Optimized(pBFSrcDst, nSamples);
         EndCounter(3);
     }
     if(m_nOrder >= 2) {
         StartCounter();
-        ProcessOrder2_3D(pBFSrcDst, nSamples);
+        ProcessOrder2_3D_Optimized(pBFSrcDst, nSamples);
         EndCounter(4);
     }
     if(m_nOrder >= 3) {
         StartCounter();
-        ProcessOrder3_3D(pBFSrcDst, nSamples);
+        ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
         EndCounter(5);
     }
 }
