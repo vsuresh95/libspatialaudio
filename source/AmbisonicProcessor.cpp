@@ -18,7 +18,7 @@
 #include <iostream>
 #include <RotateOrderOptimized.hpp>
 
-extern void OffloadChain(CBFormat*, kiss_fft_cpx*, float*, unsigned, unsigned, bool);
+extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
 
 CAmbisonicProcessor::CAmbisonicProcessor()
@@ -174,6 +174,11 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
         if (DO_PP_CHAIN_OFFLOAD) {
             StartCounter();
             OffloadPsychoPipeline(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength);
+            EndCounter(0);
+        } else if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
+            bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
+            StartCounter();
+            OffloadPsychoChain(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
             EndCounter(0);
         } else {
             ShelfFilterOrder(pBFSrcDst, nSamples);
@@ -426,36 +431,29 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 
         iChannelOrder = int(sqrt(niChannel));    //get the order of the current channel
 
-        if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
-            bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
-            StartCounter();
-            OffloadChain(pBFSrcDst, m_ppcpPsychFilters[iChannelOrder], m_pfScratchBufferA, niChannel, m_nOverlapLength, IsSharedMemory);
-            EndCounter(0);
-        } else {
-            memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
-            memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+        memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
+        memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
-            StartCounter();
-            kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
-            EndCounter(0);
+        StartCounter();
+        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+        EndCounter(0);
 
-            // Perform the convolution in the frequency domain
-            StartCounter();
-            for(unsigned ni = 0; ni < m_nFFTBins; ni++)
-            {
-                cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
-                            - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
-                cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
-                            + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
-                m_pcpScratch[ni] = cpTemp;
-            }
-            EndCounter(1);
-
-            // Convert from frequency domain back to time domain
-            StartCounter();
-            kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
-            EndCounter(2);
+        // Perform the convolution in the frequency domain
+        StartCounter();
+        for(unsigned ni = 0; ni < m_nFFTBins; ni++)
+        {
+            cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
+                        - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
+            cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
+                        + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
+            m_pcpScratch[ni] = cpTemp;
         }
+        EndCounter(1);
+
+        // Convert from frequency domain back to time domain
+        StartCounter();
+        kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+        EndCounter(2);
 
         for(unsigned ni = 0; ni < m_nFFTSize; ni++)
             m_pfScratchBufferA[ni] *= m_fFFTScaler;

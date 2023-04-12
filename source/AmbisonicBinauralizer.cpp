@@ -20,7 +20,7 @@
 
 #include "AmbisonicBinauralizer.h"
 
-extern void OffloadChain(CBFormat*, kiss_fft_cpx*, float*, unsigned, unsigned, bool);
+extern void OffloadBinaurChain(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned, bool);
 extern void OffloadBinaurPipeline(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned);
 
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
@@ -279,40 +279,38 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             StartCounter();
             OffloadBinaurPipeline(pBFSrc, ppfDst, m_ppcpFilters, m_pfOverlap, m_nOverlapLength);
             EndCounter(0);
+        } else if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
+            bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
+            StartCounter();
+            OffloadBinaurChain(pBFSrc, ppfDst, m_ppcpFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
+            EndCounter(0);
         } else {
             for(niEar = 0; niEar < 2; niEar++)
             {
                 memset(m_pfScratchBufferA, 0, m_nFFTSize * sizeof(float));
                 for(niChannel = 0; niChannel < m_nChannelCount; niChannel++)
                 {
-                    if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
-                        bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
-                        StartCounter();
-                        OffloadChain(pBFSrc, m_ppcpFilters[niEar][niChannel], m_pfScratchBufferB, niChannel, m_nOverlapLength, IsSharedMemory);
-                        EndCounter(0);
-                    } else {
-                        memcpy(m_pfScratchBufferB, pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
-                        memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+                    memcpy(m_pfScratchBufferB, pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
+                    memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
-                        StartCounter();
-                        kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
-                        EndCounter(0);
+                    StartCounter();
+                    kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
+                    EndCounter(0);
 
-                        StartCounter();
-                        for(ni = 0; ni < m_nFFTBins; ni++)
-                        {
-                            cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
-                                        - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
-                            cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
-                                        + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
-                            m_pcpScratch[ni] = cpTemp;
-                        }
-                        EndCounter(1);
-
-                        StartCounter();
-                        kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
-                        EndCounter(2);
+                    StartCounter();
+                    for(ni = 0; ni < m_nFFTBins; ni++)
+                    {
+                        cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
+                                    - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
+                        cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
+                                    + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
+                        m_pcpScratch[ni] = cpTemp;
                     }
+                    EndCounter(1);
+
+                    StartCounter();
+                    kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
+                    EndCounter(2);
 
                     for(ni = 0; ni < m_nFFTSize; ni++)
                         m_pfScratchBufferA[ni] += m_pfScratchBufferB[ni];
