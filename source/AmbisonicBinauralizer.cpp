@@ -413,16 +413,11 @@ void CAmbisonicBinauralizer::AllocateBuffers()
 }
 
 void CAmbisonicBinauralizer::PrintTimeInfo(unsigned factor) {
-    printf("---------------------------------------------\n");
-    printf("TOTAL TIME FROM BINAURALIZER\n");
-    printf("---------------------------------------------\n");
     if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
-        printf("Binaur Chain\t = %llu\n", TotalTime[0]/factor);
+        printf("Binaur Chain Total\t = %llu\n", TotalTime[0]/factor);
     } else {
         printf("Binaur FFT\t = %llu\n", TotalTime[0]/factor);
         printf("Binaur FIR\t = %llu\n", TotalTime[1]/factor);
         printf("Binaur IFFT\t = %llu\n", TotalTime[2]/factor);
     }
-
-    printf("\n");
 }

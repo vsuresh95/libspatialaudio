@@ -469,17 +469,12 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
-    printf("---------------------------------------------\n");
-    printf("TOTAL TIME FROM PSYCHOACOUSTIC FILTER\n");
-    printf("---------------------------------------------\n");
     if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
-        printf("Psycho Chain\t = %llu\n", TotalTime[0]/factor);
+        printf("Psycho Chain Total\t = %llu\n", TotalTime[0]/factor);
     } else {
         printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);
         printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
         printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
     }
     printf("Rotate Order\t = %llu\n", TotalTime[3]/factor);
-
-    printf("\n");
 }
