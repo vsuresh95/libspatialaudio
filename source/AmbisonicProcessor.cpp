@@ -185,21 +185,17 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     }
 
     /* 3D Ambisonics input expected so perform 3D rotations */
+    StartCounter();
     if(m_nOrder >= 1) {
-        StartCounter();
         ProcessOrder1_3D_Optimized(pBFSrcDst, nSamples);
-        EndCounter(3);
     }
     if(m_nOrder >= 2) {
-        StartCounter();
         ProcessOrder2_3D_Optimized(pBFSrcDst, nSamples);
-        EndCounter(4);
     }
     if(m_nOrder >= 3) {
-        StartCounter();
         ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
-        EndCounter(5);
     }
+    EndCounter(3);
 }
 
 void CAmbisonicProcessor::ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples)
@@ -483,9 +479,7 @@ void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
         printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
         printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
     }
-    printf("Rotate O1\t = %llu\n", TotalTime[3]/factor);
-    printf("Rotate O2\t = %llu\n", TotalTime[4]/factor);
-    printf("Rotate O3\t = %llu\n", TotalTime[5]/factor);
+    printf("Rotate Order\t = %llu\n", TotalTime[3]/factor);
 
     printf("\n");
 }
