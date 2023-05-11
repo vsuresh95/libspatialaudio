@@ -21,6 +21,8 @@
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
 
+bool do_print;
+
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
 {
@@ -45,6 +47,8 @@ CAmbisonicProcessor::~CAmbisonicProcessor()
 
 bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSize, unsigned nMisc)
 {
+    do_print = false;
+
     bool success = CAmbisonicBase::Configure(nOrder, b3D, nMisc);
     if(!success)
         return false;
@@ -177,9 +181,38 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
             EndCounter(0);
         } else if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
             bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
+
+            // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //     std::cout << "pBFSrcDst->m_ppfChannels[" << niChannel << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
+
+            // for(unsigned niChannel = 0; niChannel <= m_nOrder; niChannel++) {
+            //     std::cout << "m_ppcpPsychFilters[" << niChannel << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++) {
+            //         std::cout << m_ppcpPsychFilters[niChannel][niSample].r << " ";
+            //         std::cout << m_ppcpPsychFilters[niChannel][niSample].i << " ";
+            //         if ((niSample + 1) % 4 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
+
             StartCounter();
             OffloadPsychoChain(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
-            EndCounter(0);
+            EndCounter(0);            
+
+            // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //     std::cout << "pBFSrcDst->m_ppfChannels[" << niChannel << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
         } else {
             ShelfFilterOrder(pBFSrcDst, nSamples);
         }
@@ -426,8 +459,31 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
     // In the case of the 0th order signal (W channel) this takes the form of a delay
     // For all other channels shelf filters are used
     memset(m_pfScratchBufferA, 0, m_nFFTSize * sizeof(float));
+    
+    // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+    //     std::cout << "pBFSrcDst->m_ppfChannels[" << niChannel << "]:" << std::endl;
+    //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
+    //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
+
+    // for(unsigned niChannel = 0; niChannel <= m_nOrder; niChannel++) {
+    //     std::cout << "m_ppcpPsychFilters[" << niChannel << "]:" << std::endl;
+    //     for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++) {
+    //         std::cout << m_ppcpPsychFilters[niChannel][niSample].r << " ";
+    //         std::cout << m_ppcpPsychFilters[niChannel][niSample].i << " ";
+    //         if ((niSample + 1) % 4 == 0) std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
+
     for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++)
     {
+        // std::cout << "Psycho channel = " << niChannel << std::endl;
+
+        do_print = false;
 
         iChannelOrder = int(sqrt(niChannel));    //get the order of the current channel
 
@@ -464,6 +520,15 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
                 }
                 memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
     }
+
+    // for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+    //     std::cout << "pBFSrcDst->m_ppfChannels[" << niChannel << "]:" << std::endl;
+    //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+    //         std::cout << pBFSrcDst->m_ppfChannels[niChannel][niSample] << " ";
+    //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+    //     }
+    //     std::cout << std::endl;
+    // }
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {

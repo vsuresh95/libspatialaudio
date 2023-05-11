@@ -24,6 +24,8 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 // #endif
 // };
 
+extern bool do_print;
+
 kiss_fftr_cfg kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * lenmem)
 {
     int i;
@@ -77,6 +79,14 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
 
     ncfft = st->substate->nfft;
 
+    if (do_print) {
+        printf("FFT Input\n");
+        for(unsigned niSample = 0; niSample < 2 * ncfft; niSample++) {
+            printf("%.6g ", timedata[niSample]);
+            if ((niSample + 1) % 8 == 0) printf("\n");
+        }
+        printf("\n");
+    }
     /*perform the parallel fft of two real signals packed in real,imag*/
     kiss_fft( st->substate , (const kiss_fft_cpx*)timedata, st->tmpbuf );
     /* The real part of the DC element of the frequency spectrum in st->tmpbuf
@@ -88,6 +98,16 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
      * The difference of tdc.r - tdc.i is the sum of the input (dot product) [1,-1,1,-1... 
      *      yielding Nyquist bin of input time sequence
      */
+        
+    if (do_print) {
+        printf("FFT Output\n");
+        for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+            printf("%.6g ", st->tmpbuf[niSample].r);
+            printf("%.6g ", st->tmpbuf[niSample].i);
+            if ((niSample + 1) % 4 == 0) printf("\n");
+        }
+        printf("\n");
+    }
  
     tdc.r = st->tmpbuf[0].r;
     tdc.i = st->tmpbuf[0].i;
@@ -155,5 +175,25 @@ void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *t
         st->tmpbuf[ncfft - k].i *= -1;
 #endif
     }
+
+    if (do_print) {
+        printf("FIR Output\n");
+        for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+            printf("%.6g ", st->tmpbuf[niSample].r);
+            printf("%.6g ", st->tmpbuf[niSample].i);
+            if ((niSample + 1) % 4 == 0) printf("\n");
+        }
+        printf("\n");
+    }
+
     kiss_fft (st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+
+    if (do_print) {
+        printf("IFFT Output\n");
+        for(unsigned niSample = 0; niSample < 2 * ncfft; niSample++) {
+            printf("%.6g ", timedata[niSample]);
+            if ((niSample + 1) % 8 == 0) printf("\n");
+        }
+        printf("\n");
+    }
 }

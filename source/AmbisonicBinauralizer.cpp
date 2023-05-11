@@ -281,15 +281,70 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             EndCounter(0);
         } else if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD) {
             bool IsSharedMemory = (DO_NP_CHAIN_OFFLOAD) ? true : false;
+            
+            // for(niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //     std::cout << "pBFSrc->m_ppfChannels[" << niChannel << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << pBFSrc->m_ppfChannels[niChannel][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
+
+            // for(niEar = 0; niEar < 2; niEar++) {
+            //     for(niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //         std::cout << "m_ppcpFilters[" << niChannel << "]:" << std::endl;
+            //         for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++) {
+            //             std::cout << m_ppcpFilters[niEar][niChannel][niSample].r << " ";
+            //             std::cout << m_ppcpFilters[niEar][niChannel][niSample].i << " ";
+            //             if ((niSample + 1) % 4 == 0) std::cout << std::endl;
+            //         }
+            //         std::cout << std::endl;
+            //     }
+            // }
+
             StartCounter();
             OffloadBinaurChain(pBFSrc, ppfDst, m_ppcpFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
             EndCounter(0);
+            
+            // for(niEar = 0; niEar < 2; niEar++) {
+            //     std::cout << "ppfDst" << niEar << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << ppfDst[niEar][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
         } else {
+                        
+            // for(niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //     std::cout << "pBFSrc->m_ppfChannels[" << niChannel << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << pBFSrc->m_ppfChannels[niChannel][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
+
+            // for(niEar = 0; niEar < 2; niEar++) {
+            //     for(niChannel = 0; niChannel < m_nChannelCount; niChannel++) {
+            //         std::cout << "m_ppcpFilters[" << niChannel << "]:" << std::endl;
+            //         for(unsigned niSample = 0; niSample < m_nFFTBins; niSample++) {
+            //             std::cout << m_ppcpFilters[niEar][niChannel][niSample].r << " ";
+            //             std::cout << m_ppcpFilters[niEar][niChannel][niSample].i << " ";
+            //             if ((niSample + 1) % 4 == 0) std::cout << std::endl;
+            //         }
+            //         std::cout << std::endl;
+            //     }
+            // }
+
             for(niEar = 0; niEar < 2; niEar++)
             {
                 memset(m_pfScratchBufferA, 0, m_nFFTSize * sizeof(float));
                 for(niChannel = 0; niChannel < m_nChannelCount; niChannel++)
                 {
+                    // std::cout << "Binaur ear " << niEar << " channel = " << niChannel << std::endl;
+
                     memcpy(m_pfScratchBufferB, pBFSrc->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
                     memset(&m_pfScratchBufferB[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
 
@@ -321,7 +376,16 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                 for(ni = 0; ni < m_nOverlapLength; ni++)
                     ppfDst[niEar][ni] += m_pfOverlap[niEar][ni];
                 memcpy(m_pfOverlap[niEar], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
-            }
+            }            
+            
+            // for(niEar = 0; niEar < 2; niEar++) {
+            //     std::cout << "ppfDst" << niEar << "]:" << std::endl;
+            //     for(unsigned niSample = 0; niSample < m_nBlockSize; niSample++) {
+            //         std::cout << ppfDst[niEar][niSample] << " ";
+            //         if ((niSample + 1) % 8 == 0) std::cout << std::endl;
+            //     }
+            //     std::cout << std::endl;
+            // }
         }
     }
 }
