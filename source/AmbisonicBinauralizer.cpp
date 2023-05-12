@@ -19,6 +19,7 @@
 #include <iostream>
 
 #include "AmbisonicBinauralizer.h"
+#include "_kiss_fft_guts.h"
 
 extern void OffloadBinaurChain(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned, bool);
 extern void OffloadBinaurPipeline(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned);
@@ -236,10 +237,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
             for(ni = 0; ni < m_nFFTBins; ni++)
             {
-                cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
-                            - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
-                cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
-                            + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
+                C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpFilters[niEar][niChannel][ni]);
                 m_pcpScratch[ni] = cpTemp;
             }
             kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
@@ -355,10 +353,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                     StartCounter();
                     for(ni = 0; ni < m_nFFTBins; ni++)
                     {
-                        cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
-                                    - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
-                        cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
-                                    + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
+                        C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpFilters[niEar][niChannel][ni]);
                         m_pcpScratch[ni] = cpTemp;
                     }
                     EndCounter(1);

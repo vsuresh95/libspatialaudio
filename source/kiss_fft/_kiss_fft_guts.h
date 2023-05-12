@@ -43,9 +43,9 @@ struct kiss_fft_state{
  * */
 #ifdef FIXED_POINT
 #if (FIXED_POINT==32)
-# define FRACBITS 31
+# define FRACBITS (FIXED_POINT-AUDIO_FX_IL)
 # define SAMPPROD int64_t
-#define SAMP_MAX 2147483647
+#define SAMP_MAX ((1<<FRACBITS)-1)
 #else
 # define FRACBITS 15
 # define SAMPPROD int32_t 
@@ -73,9 +73,10 @@ struct kiss_fft_state{
 #   define DIVSCALAR(x,k) \
     (x) = sround( smul(  x, SAMP_MAX/k ) )
 
-#   define C_FIXDIV(c,div) \
-    do {    DIVSCALAR( (c).r , div);  \
-        DIVSCALAR( (c).i  , div); }while (0)
+// #   define C_FIXDIV(c,div)
+//     do {    DIVSCALAR( (c).r , div); 
+//         DIVSCALAR( (c).i  , div); }while (0)
+#   define C_FIXDIV(c,div) /* NOOP */
 
 #   define C_MULBYSCALAR( c, s ) \
     do{ (c).r =  sround( smul( (c).r , s ) ) ;\

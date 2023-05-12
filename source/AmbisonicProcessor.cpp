@@ -17,6 +17,7 @@
 #include "AmbisonicProcessor.h"
 #include <iostream>
 #include <RotateOrderOptimized.hpp>
+#include "_kiss_fft_guts.h"
 
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
@@ -498,10 +499,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         StartCounter();
         for(unsigned ni = 0; ni < m_nFFTBins; ni++)
         {
-            cpTemp.r = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].r
-                        - m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].i;
-            cpTemp.i = m_pcpScratch[ni].r * m_ppcpPsychFilters[iChannelOrder][ni].i
-                        + m_pcpScratch[ni].i * m_ppcpPsychFilters[iChannelOrder][ni].r;
+            C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpPsychFilters[iChannelOrder][ni]);
             m_pcpScratch[ni] = cpTemp;
         }
         EndCounter(1);

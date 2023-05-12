@@ -38,6 +38,8 @@ extern "C" {
   in the tools/ directory.
 */
 
+#define FIXED_POINT 32
+
 #ifdef USE_SIMD
 # include <xmmintrin.h>
 # define kiss_fft_scalar __m128
@@ -69,6 +71,8 @@ typedef struct {
 }kiss_fft_cpx;
 
 typedef struct kiss_fft_state* kiss_fft_cfg;
+ 
+#define AUDIO_FX_IL 14
 
 /* 
  *  kiss_fft_alloc

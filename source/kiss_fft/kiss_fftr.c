@@ -66,7 +66,7 @@ kiss_fftr_cfg kiss_fftr_alloc(int nfft,int inverse_fft,void * mem,size_t * lenme
     return st;
 }
 
-void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *freqdata)
+void kiss_fftr(kiss_fftr_cfg st,const kiss_fftr_scalar *timedata_input,kiss_fft_cpx *freqdata)
 {
     /* input buffer timedata is stored row-wise */
     int k,ncfft;
@@ -78,6 +78,27 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
     }
 
     ncfft = st->substate->nfft;
+
+    // printf("FFT input:\n");
+    // for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+    //     printf("%.9g ", timedata_input[niSample]);
+    //     if ((niSample + 1) % 8 == 0) printf("\n");
+    // }
+    // printf("\n");
+
+#ifdef FIXED_POINT
+    kiss_fft_scalar *timedata = (kiss_fft_scalar *) esp_alloc(2 * ncfft * sizeof(kiss_fft_scalar));
+
+    // printf("timedata:\n");
+    for(unsigned niSample = 0; niSample < 2*ncfft; niSample++) {
+        timedata[niSample] = float_to_fixed32(timedata_input[niSample], AUDIO_FX_IL);
+        // printf("%08x ", timedata[niSample]);
+        // if ((niSample + 1) % 8 == 0) printf("\n");
+    }
+    // printf("\n");
+#else
+    const kiss_fft_scalar *timedata = timedata_input;
+#endif
 
     if (do_print) {
         printf("FFT Input\n");
@@ -98,6 +119,19 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
      * The difference of tdc.r - tdc.i is the sum of the input (dot product) [1,-1,1,-1... 
      *      yielding Nyquist bin of input time sequence
      */
+ 
+//     printf("FFT output:\n");
+//     for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+// #ifdef FIXED_POINT
+//         printf("%.9g ", fixed32_to_float(st->tmpbuf[niSample].r, AUDIO_FX_IL));
+//         printf("%.9g ", fixed32_to_float(st->tmpbuf[niSample].i, AUDIO_FX_IL));
+// #else
+//         printf("%.9g ", st->tmpbuf[niSample].r);
+//         printf("%.9g ", st->tmpbuf[niSample].i);
+// #endif
+//         if ((niSample + 1) % 4 == 0) printf("\n");
+//     }
+//     printf("\n");
         
     if (do_print) {
         printf("FFT Output\n");
@@ -138,9 +172,23 @@ void kiss_fftr(kiss_fftr_cfg st,const kiss_fft_scalar *timedata,kiss_fft_cpx *fr
         freqdata[ncfft-k].r = HALF_OF(f1k.r - tw.r);
         freqdata[ncfft-k].i = HALF_OF(tw.i - f1k.i);
     }
+
+// #ifdef FIXED_POINT
+//     printf("freqdata:\n");
+//     for(unsigned niSample = 0; niSample < ncfft+1; niSample++) {
+//         printf("%08x ", freqdata[niSample].r);
+//         printf("%08x ", freqdata[niSample].i);
+//         if ((niSample + 1) % 4 == 0) printf("\n");
+//     }
+//     printf("\n");
+// #endif
+
+#ifdef FIXED_POINT
+    esp_free(timedata);
+#endif
 }
 
-void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *timedata)
+void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fftr_scalar *timedata_output)
 {
     /* input buffer timedata is stored row-wise */
     int k, ncfft;
@@ -151,6 +199,22 @@ void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *t
     }
 
     ncfft = st->substate->nfft;
+
+#ifdef FIXED_POINT
+    kiss_fft_scalar *timedata = (kiss_fft_scalar *) esp_alloc(2 * ncfft * sizeof(kiss_fft_scalar));
+#else
+    kiss_fft_scalar *timedata = timedata_output;
+#endif
+
+// #ifdef FIXED_POINT
+//     printf("freqdata:\n");
+//     for(unsigned niSample = 0; niSample < ncfft+1; niSample++) {
+//         printf("%08x ", freqdata[niSample].r);
+//         printf("%08x ", freqdata[niSample].i);
+//         if ((niSample + 1) % 4 == 0) printf("\n");
+//     }
+//     printf("\n");
+// #endif
 
     st->tmpbuf[0].r = freqdata[0].r + freqdata[ncfft].r;
     st->tmpbuf[0].i = freqdata[0].r - freqdata[ncfft].r;
@@ -185,8 +249,34 @@ void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *t
         }
         printf("\n");
     }
+   
+//     printf("IFFT input:\n");
+//     for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+// #ifdef FIXED_POINT
+//         printf("%.9g ", fixed32_to_float(st->tmpbuf[niSample].r, AUDIO_FX_IL));
+//         printf("%.9g ", fixed32_to_float(st->tmpbuf[niSample].i, AUDIO_FX_IL));
+// #else
+//         printf("%.9g ", st->tmpbuf[niSample].r);
+//         printf("%.9g ", st->tmpbuf[niSample].i);
+// #endif
+//         if ((niSample + 1) % 4 == 0) printf("\n");
+//     }
+//     printf("\n"); 
 
     kiss_fft (st->substate, st->tmpbuf, (kiss_fft_cpx *) timedata);
+
+#ifdef FIXED_POINT
+    for(unsigned niSample = 0; niSample < 2*ncfft; niSample++) {
+        timedata_output[niSample] = fixed32_to_float(timedata[niSample], AUDIO_FX_IL);
+    }
+#endif
+
+    // printf("IFFT output:\n");
+    // for(unsigned niSample = 0; niSample < ncfft; niSample++) {
+    //     printf("%.9g ", timedata_output[niSample]);
+    //     if ((niSample + 1) % 8 == 0) printf("\n");
+    // }
+    // printf("\n");
 
     if (do_print) {
         printf("IFFT Output\n");
@@ -196,4 +286,8 @@ void kiss_fftri(kiss_fftr_cfg st,const kiss_fft_cpx *freqdata,kiss_fft_scalar *t
         }
         printf("\n");
     }
+
+#ifdef FIXED_POINT
+    esp_free(timedata);
+#endif
 }

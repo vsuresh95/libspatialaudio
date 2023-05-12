@@ -14,6 +14,7 @@
 
 
 #include "SpeakersBinauralizer.h"
+#include "_kiss_fft_guts.h"
 
 
 SpeakersBinauralizer::SpeakersBinauralizer()
@@ -157,10 +158,7 @@ void SpeakersBinauralizer::Process(float** pBFSrc, float** ppfDst)
             kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
             for(unsigned ni = 0; ni < m_nFFTBins; ni++)
             {
-                cpTemp.r = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].r
-                    - m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].i;
-                cpTemp.i = m_pcpScratch[ni].r * m_ppcpFilters[niEar][niChannel][ni].i
-                    + m_pcpScratch[ni].i * m_ppcpFilters[niEar][niChannel][ni].r;
+                C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpFilters[niEar][niChannel][ni]);
                 m_pcpScratch[ni] = cpTemp;
             }
             kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
