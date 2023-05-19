@@ -38,7 +38,7 @@ extern "C" {
   in the tools/ directory.
 */
 
-#define FIXED_POINT 32
+// #define FIXED_POINT 32
 
 #ifdef USE_SIMD
 # include <xmmintrin.h>
