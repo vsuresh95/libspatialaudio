@@ -452,7 +452,7 @@ void CAmbisonicBinauralizer::AllocateBuffers()
     //Allocate overlap-add buffers
     m_pfOverlap = (float **) esp_alloc(2 * sizeof(float *));
     for(unsigned i=0; i<2; i++)
-        m_pfOverlap[i] = (float *) esp_alloc(m_nOverlapLength * sizeof(float));
+        m_pfOverlap[i] = (float *) esp_alloc(round_up(m_nOverlapLength, 2) * sizeof(float));
 
     //Allocate FFT and iFFT for new size
     m_pFFT_cfg.reset(kiss_fftr_alloc(m_nFFTSize, 0, 0, 0));

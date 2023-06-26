@@ -19,6 +19,8 @@
 #include <RotateOrderOptimized.hpp>
 #include "_kiss_fft_guts.h"
 
+bool do_fft_ifft_offload;
+
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
 
@@ -49,6 +51,7 @@ CAmbisonicProcessor::~CAmbisonicProcessor()
 bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSize, unsigned nMisc)
 {
     do_print = false;
+    do_fft_ifft_offload = false;
 
     bool success = CAmbisonicBase::Configure(nOrder, b3D, nMisc);
     if(!success)
@@ -81,7 +84,7 @@ bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSi
     //Allocate buffers
     m_pfOverlap = (float **) esp_alloc(m_nChannelCount * sizeof(float *));
     for(unsigned i=0; i<m_nChannelCount; i++)
-        m_pfOverlap[i] = (float *) esp_alloc(m_nOverlapLength * sizeof(float));
+        m_pfOverlap[i] = (float *) esp_alloc(round_up(m_nOverlapLength, 2) * sizeof(float));
 
     m_pfScratchBufferA = (float *) esp_alloc(m_nFFTSize * sizeof(float));
     m_ppcpPsychFilters = (kiss_fft_cpx **) esp_alloc((m_nOrder+1) * sizeof(kiss_fft_cpx *));
@@ -454,6 +457,8 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
     kiss_fft_cpx cpTemp;
 
     unsigned iChannelOrder = 0;
+
+    do_fft_ifft_offload = true;
 
     // Filter the Ambisonics channels
     // All  channels are filtered using linear phase FIR filters.
