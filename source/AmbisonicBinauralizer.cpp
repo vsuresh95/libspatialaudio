@@ -333,12 +333,12 @@ void CAmbisonicBinauralizer::ArrangeSpeakers()
     // Select cube layout for first order a dodecahedron for 2nd and 3rd
     if (m_nOrder == 1)
     {
-        std::cout << "Getting first order cube" << std::endl;
+        // std::cout << "Getting first order cube" << std::endl;
         nSpeakerSetUp = kAmblib_Cube2;
     }
     else
     {
-        std::cout << "Getting second/third order dodecahedron" << std::endl;
+        // std::cout << "Getting second/third order dodecahedron" << std::endl;
         nSpeakerSetUp = kAmblib_Dodecahedron;
     }
 
