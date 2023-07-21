@@ -21,6 +21,7 @@
 
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
+extern void OffloadPsychoFFTIFFT(CBFormat*, kiss_fft_cpx**, float**, unsigned, kiss_fftr_cfg, kiss_fftr_cfg);
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -181,6 +182,10 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
 
             StartCounter();
             OffloadPsychoChain(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
+            EndCounter(0);
+        } else if (DO_FFT_IFFT_OFFLOAD) {
+            StartCounter();
+            OffloadPsychoFFTIFFT(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength, m_pFFT_psych_cfg, m_pIFFT_psych_cfg);
             EndCounter(0);
         } else {
             ShelfFilterOrder(pBFSrcDst);
@@ -533,7 +538,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
-    if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
+    if (DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
         printf("Psycho Chain Total\t = %llu\n", TotalTime[0]/factor);
     } else {
         printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);

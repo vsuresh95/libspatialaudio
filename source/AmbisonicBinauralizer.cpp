@@ -24,6 +24,7 @@
 
 extern void OffloadBinaurChain(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned, bool);
 extern void OffloadBinaurPipeline(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned);
+extern void OffloadBinaurFFTIFFT(CBFormat*, float**, kiss_fft_cpx***, float**, unsigned, kiss_fftr_cfg, kiss_fftr_cfg);
 
 CAmbisonicBinauralizer::CAmbisonicBinauralizer()
     : m_pFFT_cfg(nullptr, kiss_fftr_free)
@@ -284,6 +285,10 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             StartCounter();
             OffloadBinaurChain(pBFSrc, ppfDst, m_ppcpFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
             EndCounter(0);
+        } else if (DO_FFT_IFFT_OFFLOAD) {
+            StartCounter();
+            OffloadBinaurFFTIFFT(pBFSrc, ppfDst, m_ppcpFilters, m_pfOverlap, m_nOverlapLength, m_pFFT_cfg.get(), m_pIFFT_cfg.get());
+            EndCounter(0);
         } else {
 
             kiss_fft_cpx cpTemp;
@@ -514,7 +519,7 @@ void CAmbisonicBinauralizer::AllocateBuffers()
 }
 
 void CAmbisonicBinauralizer::PrintTimeInfo(unsigned factor) {
-    if (DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
+    if (DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
         printf("Binaur Chain Total\t = %llu\n", TotalTime[0]/factor);
     } else {
         printf("Binaur FFT\t = %llu\n", TotalTime[0]/factor);
