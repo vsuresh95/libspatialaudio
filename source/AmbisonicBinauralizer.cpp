@@ -291,6 +291,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
             EndCounter(0);
         } else {
 
+            StartCounter();
             kiss_fft_cpx cpTemp;
 
             // Pointers/structures to manage input/output data
@@ -330,7 +331,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                     }
 
                     StartCounter();
-                    kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
+                    unsigned long long FFTPostProcTime = kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
                     EndCounter(0);
 
                     StartCounter();
@@ -342,9 +343,10 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                     EndCounter(1);
 
                     StartCounter();
-                    kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
+                    unsigned long long IFFTPreProcTime = kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
                     EndCounter(2);
 
+                    StartCounter();
                     if (niChannel == m_nChannelCount - 1)
                     {
                         src = m_pfScratchBufferB;
@@ -428,8 +430,13 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                             write_mem_wtfwd((void *) dst, DstData.value_64);
                         }
                     }
+                    EndCounter(3);
+
+                    TotalTime[0] -= FFTPostProcTime;
+                    TotalTime[1] += FFTPostProcTime + IFFTPreProcTime;
+                    TotalTime[2] -= IFFTPreProcTime;
                 }
-            }            
+            }
         }
     }
 }
@@ -519,11 +526,17 @@ void CAmbisonicBinauralizer::AllocateBuffers()
 }
 
 void CAmbisonicBinauralizer::PrintTimeInfo(unsigned factor) {
-    if (DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
-        printf("Binaur Chain Total\t = %llu\n", TotalTime[0]/factor);
-    } else {
-        printf("Binaur FFT\t = %llu\n", TotalTime[0]/factor);
-        printf("Binaur FIR\t = %llu\n", TotalTime[1]/factor);
-        printf("Binaur IFFT\t = %llu\n", TotalTime[2]/factor);
+    printf("\n");
+    printf("---------------------------------------------\n");
+    printf("BINAURALIZER TIME\n");
+    printf("---------------------------------------------\n");
+    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3])/factor);
+
+    if (!(DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD)) {
+        printf("\n");
+        printf("Binaur FFT\t\t = %llu\n", TotalTime[0]/factor);
+        printf("Binaur FIR\t\t = %llu\n", TotalTime[1]/factor);
+        printf("Binaur IFFT\t\t = %llu\n", TotalTime[2]/factor);
+        printf("Binaur Overlap\t\t = %llu\n", TotalTime[3]/factor);
     }
 }

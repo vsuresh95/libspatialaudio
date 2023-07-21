@@ -207,7 +207,7 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     if(m_nOrder >= 3) {
         ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
     }
-    EndCounter(3);
+    EndCounter(4);
 }
 
 void CAmbisonicProcessor::ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples)
@@ -440,7 +440,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 	unsigned ZeroLength = m_nFFTSize - m_nBlockSize;
 	unsigned ReadLength = m_nBlockSize;
 	unsigned OverlapLength = round_up(m_nOverlapLength, 2);
-    
+
     // Filter the Ambisonics channels
     // All  channels are filtered using linear phase FIR filters.
     // In the case of the 0th order signal (W channel) this takes the form of a delay
@@ -470,7 +470,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 
         // Convert from time domain back to frequency domain
         StartCounter();
-        kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
+        unsigned long long FFTPostProcTime = kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         EndCounter(0);
 
         // Perform the convolution in the frequency domain
@@ -484,13 +484,14 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 
         // Convert from frequency domain back to time domain
         StartCounter();
-        kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
+        unsigned long long IFFTPreProcTime = kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
         EndCounter(2);
 
         src = m_pfScratchBufferA;
         dst = pBFSrcDst->m_ppfChannels[niChannel];
         overlap_dst = m_pfOverlap[niChannel];
 
+        StartCounter();
         // First, we copy the output, scale it and account for the overlap
         // data from the previous block, for the same channel.
         for (unsigned niSample = 0; niSample < OverlapLength; niSample+=2, src+=2, dst+=2, overlap_dst+=2)
@@ -534,16 +535,27 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
             // Need to cast to void* for extended ASM code.
             write_mem_wtfwd((void *) overlap_dst, OverlapData.value_64);
         }
+        EndCounter(3);
+
+        TotalTime[0] -= FFTPostProcTime;
+        TotalTime[1] += FFTPostProcTime + IFFTPreProcTime;
+        TotalTime[2] -= IFFTPreProcTime;
     }
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
-    if (DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD) {
-        printf("Psycho Chain Total\t = %llu\n", TotalTime[0]/factor);
-    } else {
-        printf("Psycho FFT\t = %llu\n", TotalTime[0]/factor);
-        printf("Psycho FIR\t = %llu\n", TotalTime[1]/factor);
-        printf("Psycho IFFT\t = %llu\n", TotalTime[2]/factor);
+    printf("Rotate Order\t\t = %llu\n", TotalTime[4]/factor);
+    printf("\n");
+    printf("---------------------------------------------\n");
+    printf("PSYCHO-ACOUSTIC TIME\n");
+    printf("---------------------------------------------\n");
+    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3])/factor);
+
+    if (!(DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD)) {
+        printf("\n");
+        printf("Psycho FFT\t\t = %llu\n", TotalTime[0]/factor);
+        printf("Psycho FIR\t\t = %llu\n", TotalTime[1]/factor);
+        printf("Psycho IFFT\t\t = %llu\n", TotalTime[2]/factor);
+        printf("Psycho Overlap\t\t = %llu\n", TotalTime[3]/factor);
     }
-    printf("Rotate Order\t = %llu\n", TotalTime[3]/factor);
 }
