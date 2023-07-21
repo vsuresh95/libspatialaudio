@@ -19,12 +19,8 @@
 #include <RotateOrderOptimized.hpp>
 #include "_kiss_fft_guts.h"
 
-bool do_fft_ifft_offload;
-
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
-
-bool do_print;
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -50,9 +46,6 @@ CAmbisonicProcessor::~CAmbisonicProcessor()
 
 bool CAmbisonicProcessor::Configure(unsigned nOrder, bool b3D, unsigned nBlockSize, unsigned nMisc)
 {
-    do_print = false;
-    do_fft_ifft_offload = false;
-
     bool success = CAmbisonicBase::Configure(nOrder, b3D, nMisc);
     if(!success)
         return false;
@@ -190,7 +183,7 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
             OffloadPsychoChain(pBFSrcDst, m_ppcpPsychFilters, m_pfOverlap, m_nOverlapLength, IsSharedMemory);
             EndCounter(0);
         } else {
-            ShelfFilterOrder(pBFSrcDst, nSamples);
+            ShelfFilterOrder(pBFSrcDst);
         }
     }
     else
@@ -424,31 +417,53 @@ void CAmbisonicProcessor::ProcessOrder3_2D(CBFormat* pBFSrcDst, unsigned nSample
 }
 */
 
-void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSamples)
+void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 {
     kiss_fft_cpx cpTemp;
 
     unsigned iChannelOrder = 0;
 
-    do_fft_ifft_offload = true;
+    // Pointers/structures to manage input/output data
+	audio_token_t SrcData;
+	audio_t* src;
+	audio_token_t DstData;
+	audio_t* dst;
+	audio_token_t OverlapData;
+	audio_t* overlap_dst;
 
+	unsigned InitLength = m_nBlockSize;
+	unsigned ZeroLength = m_nFFTSize - m_nBlockSize;
+	unsigned ReadLength = m_nBlockSize;
+	unsigned OverlapLength = round_up(m_nOverlapLength, 2);
+    
     // Filter the Ambisonics channels
     // All  channels are filtered using linear phase FIR filters.
     // In the case of the 0th order signal (W channel) this takes the form of a delay
     // For all other channels shelf filters are used
-    memset(m_pfScratchBufferA, 0, m_nFFTSize * sizeof(float));
-
     for(unsigned niChannel = 0; niChannel < m_nChannelCount; niChannel++)
     {
-        // std::cout << "Psycho channel = " << niChannel << std::endl;
-
-        do_print = false;
-
         iChannelOrder = int(sqrt(niChannel));    //get the order of the current channel
 
-        memcpy(m_pfScratchBufferA, pBFSrcDst->m_ppfChannels[niChannel], m_nBlockSize * sizeof(float));
-        memset(&m_pfScratchBufferA[m_nBlockSize], 0, (m_nFFTSize - m_nBlockSize) * sizeof(float));
+        src = pBFSrcDst->m_ppfChannels[niChannel];
+        dst = m_pfScratchBufferA;
 
+        // Copying from pBFSrcDst->m_ppfChannels[niChannel] to m_pfScratchBufferA
+        for (unsigned niSample = 0; niSample < InitLength; niSample+=2, src+=2, dst+=2)
+        {
+            // Need to cast to void* for extended ASM code.
+            SrcData.value_64 = read_mem_reqv((void *) src);
+            write_mem_wtfwd((void *) dst, SrcData.value_64);
+        }
+
+        // Zeroing rest of m_pfScratchBufferA
+        for (unsigned niSample = 0; niSample < ZeroLength; niSample+=2, dst+=2)
+        {
+            // Need to cast to void* for extended ASM code.
+            SrcData.value_64 = 0;
+            write_mem_wtfwd((void *) dst, SrcData.value_64);
+        }
+
+        // Convert from time domain back to frequency domain
         StartCounter();
         kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
         EndCounter(0);
@@ -467,14 +482,53 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSample
         kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
         EndCounter(2);
 
-        for(unsigned ni = 0; ni < m_nFFTSize; ni++)
-            m_pfScratchBufferA[ni] *= m_fFFTScaler;
-                memcpy(pBFSrcDst->m_ppfChannels[niChannel], m_pfScratchBufferA, m_nBlockSize * sizeof(float));
-        for(unsigned ni = 0; ni < m_nOverlapLength; ni++)
-                {
-                        pBFSrcDst->m_ppfChannels[niChannel][ni] += m_pfOverlap[niChannel][ni];
-                }
-                memcpy(m_pfOverlap[niChannel], &m_pfScratchBufferA[m_nBlockSize], m_nOverlapLength * sizeof(float));
+        src = m_pfScratchBufferA;
+        dst = pBFSrcDst->m_ppfChannels[niChannel];
+        overlap_dst = m_pfOverlap[niChannel];
+
+        // First, we copy the output, scale it and account for the overlap
+        // data from the previous block, for the same channel.
+        for (unsigned niSample = 0; niSample < OverlapLength; niSample+=2, src+=2, dst+=2, overlap_dst+=2)
+        {
+            // Need to cast to void* for extended ASM code.
+            SrcData.value_64 = read_mem_reqodata((void *) src);
+            OverlapData.value_64 = read_mem_reqv((void *) overlap_dst);
+
+            DstData.value_32_1 = OverlapData.value_32_1 + m_fFFTScaler * SrcData.value_32_1;
+            DstData.value_32_2 = OverlapData.value_32_2 + m_fFFTScaler * SrcData.value_32_2;
+
+            // Need to cast to void* for extended ASM code.
+            write_mem_wtfwd((void *) dst, DstData.value_64);
+        }
+
+        // Second, we simply copy the output (with scaling) as we are outside the overlap range.
+        for (unsigned niSample = OverlapLength; niSample < ReadLength; niSample+=2, src+=2, dst+=2)
+        {
+            // Need to cast to void* for extended ASM code.
+            SrcData.value_64 = read_mem_reqodata((void *) src);
+
+            DstData.value_32_1 = m_fFFTScaler * SrcData.value_32_1;
+            DstData.value_32_2 = m_fFFTScaler * SrcData.value_32_2;
+
+            // Need to cast to void* for extended ASM code.
+            write_mem_wtfwd((void *) dst, DstData.value_64);
+        }
+
+        overlap_dst = m_pfOverlap[niChannel];
+
+        // Last, we copy our output (with scaling) directly to the overlap buffer only.
+        // This data will be used in the first loop for the next audio block.
+        for (unsigned niSample = 0; niSample < OverlapLength; niSample+=2, src+=2, dst+=2, overlap_dst+=2)
+        {
+            // Need to cast to void* for extended ASM code.
+            SrcData.value_64 = read_mem_reqodata((void *) src);
+
+            OverlapData.value_32_1 = m_fFFTScaler * SrcData.value_32_1;
+            OverlapData.value_32_2 = m_fFFTScaler * SrcData.value_32_2;
+
+            // Need to cast to void* for extended ASM code.
+            write_mem_wtfwd((void *) overlap_dst, OverlapData.value_64);
+        }
     }
 }
 

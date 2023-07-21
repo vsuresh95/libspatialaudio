@@ -158,7 +158,7 @@ public:
     void ProcessOrder2_3D_Optimized(CBFormat* pBFSrcDst, unsigned nSamples);
     void ProcessOrder3_3D_Optimized(CBFormat* pBFSrcDst, unsigned nSamples);
 
-    void ShelfFilterOrder(CBFormat* pBFSrcDst, unsigned nSamples);
+    void ShelfFilterOrder(CBFormat* pBFSrcDst);
 
     Orientation m_orientation;
     float* m_pfTempSample;
