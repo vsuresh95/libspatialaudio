@@ -314,6 +314,7 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                     src = pBFSrc->m_ppfChannels[niChannel];
                     dst = m_pfScratchBufferB;
 
+                    StartCounter();
                     // Copying from pBFSrc->m_ppfChannels[niChannel] to m_pfScratchBufferB
                     for (unsigned niSample = 0; niSample < InitLength; niSample+=2, src+=2, dst+=2)
                     {
@@ -329,10 +330,11 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                         SrcData.value_64 = 0;
                         write_mem_wtfwd((void *) dst, SrcData.value_64);
                     }
+                    EndCounter(0);
 
                     StartCounter();
                     unsigned long long FFTPostProcTime = kiss_fftr(m_pFFT_cfg.get(), m_pfScratchBufferB, m_pcpScratch);
-                    EndCounter(0);
+                    EndCounter(1);
 
                     StartCounter();
                     for(ni = 0; ni < m_nFFTBins; ni++)
@@ -340,11 +342,11 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                         C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpFilters[niEar][niChannel][ni]);
                         m_pcpScratch[ni] = cpTemp;
                     }
-                    EndCounter(1);
+                    EndCounter(2);
 
                     StartCounter();
                     unsigned long long IFFTPreProcTime = kiss_fftri(m_pIFFT_cfg.get(), m_pcpScratch, m_pfScratchBufferB);
-                    EndCounter(2);
+                    EndCounter(3);
 
                     StartCounter();
                     if (niChannel == m_nChannelCount - 1)
@@ -430,11 +432,11 @@ void CAmbisonicBinauralizer::Process(CBFormat* pBFSrc,
                             write_mem_wtfwd((void *) dst, DstData.value_64);
                         }
                     }
-                    EndCounter(3);
+                    EndCounter(4);
 
-                    TotalTime[0] -= FFTPostProcTime;
-                    TotalTime[1] += FFTPostProcTime + IFFTPreProcTime;
-                    TotalTime[2] -= IFFTPreProcTime;
+                    TotalTime[1] -= FFTPostProcTime;
+                    TotalTime[2] += FFTPostProcTime + IFFTPreProcTime;
+                    TotalTime[3] -= IFFTPreProcTime;
                 }
             }
         }
@@ -530,13 +532,14 @@ void CAmbisonicBinauralizer::PrintTimeInfo(unsigned factor) {
     printf("---------------------------------------------\n");
     printf("BINAURALIZER TIME\n");
     printf("---------------------------------------------\n");
-    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3])/factor);
+    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3] + TotalTime[4])/factor);
 
     if (!(DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD)) {
         printf("\n");
-        printf("Binaur FFT\t\t = %llu\n", TotalTime[0]/factor);
-        printf("Binaur FIR\t\t = %llu\n", TotalTime[1]/factor);
-        printf("Binaur IFFT\t\t = %llu\n", TotalTime[2]/factor);
-        printf("Binaur Overlap\t\t = %llu\n", TotalTime[3]/factor);
+        printf("Binaur Init Data\t = %llu\n", TotalTime[0]/factor);
+        printf("Binaur FFT\t\t = %llu\n", TotalTime[1]/factor);
+        printf("Binaur FIR\t\t = %llu\n", TotalTime[2]/factor);
+        printf("Binaur IFFT\t\t = %llu\n", TotalTime[3]/factor);
+        printf("Binaur Overlap\t\t = %llu\n", TotalTime[4]/factor);
     }
 }

@@ -452,6 +452,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
         src = pBFSrcDst->m_ppfChannels[niChannel];
         dst = m_pfScratchBufferA;
 
+        StartCounter();
         // Copying from pBFSrcDst->m_ppfChannels[niChannel] to m_pfScratchBufferA
         for (unsigned niSample = 0; niSample < InitLength; niSample+=2, src+=2, dst+=2)
         {
@@ -467,11 +468,12 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
             SrcData.value_64 = 0;
             write_mem_wtfwd((void *) dst, SrcData.value_64);
         }
+        EndCounter(0);
 
         // Convert from time domain back to frequency domain
         StartCounter();
         unsigned long long FFTPostProcTime = kiss_fftr(m_pFFT_psych_cfg, m_pfScratchBufferA, m_pcpScratch);
-        EndCounter(0);
+        EndCounter(1);
 
         // Perform the convolution in the frequency domain
         StartCounter();
@@ -480,12 +482,12 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
             C_MUL(cpTemp , m_pcpScratch[ni] , m_ppcpPsychFilters[iChannelOrder][ni]);
             m_pcpScratch[ni] = cpTemp;
         }
-        EndCounter(1);
+        EndCounter(2);
 
         // Convert from frequency domain back to time domain
         StartCounter();
         unsigned long long IFFTPreProcTime = kiss_fftri(m_pIFFT_psych_cfg, m_pcpScratch, m_pfScratchBufferA);
-        EndCounter(2);
+        EndCounter(3);
 
         src = m_pfScratchBufferA;
         dst = pBFSrcDst->m_ppfChannels[niChannel];
@@ -535,11 +537,11 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
             // Need to cast to void* for extended ASM code.
             write_mem_wtfwd((void *) overlap_dst, OverlapData.value_64);
         }
-        EndCounter(3);
+        EndCounter(4);
 
-        TotalTime[0] -= FFTPostProcTime;
-        TotalTime[1] += FFTPostProcTime + IFFTPreProcTime;
-        TotalTime[2] -= IFFTPreProcTime;
+        TotalTime[1] -= FFTPostProcTime;
+        TotalTime[2] += FFTPostProcTime + IFFTPreProcTime;
+        TotalTime[3] -= IFFTPreProcTime;
     }
 }
 
@@ -549,13 +551,14 @@ void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
     printf("---------------------------------------------\n");
     printf("PSYCHO-ACOUSTIC TIME\n");
     printf("---------------------------------------------\n");
-    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3])/factor);
+    printf("Total Time\t\t = %llu\n", (TotalTime[0] + TotalTime[1] + TotalTime[2] + TotalTime[3] + TotalTime[4])/factor);
 
     if (!(DO_FFT_IFFT_OFFLOAD || DO_CHAIN_OFFLOAD || DO_NP_CHAIN_OFFLOAD || DO_PP_CHAIN_OFFLOAD)) {
         printf("\n");
-        printf("Psycho FFT\t\t = %llu\n", TotalTime[0]/factor);
-        printf("Psycho FIR\t\t = %llu\n", TotalTime[1]/factor);
-        printf("Psycho IFFT\t\t = %llu\n", TotalTime[2]/factor);
-        printf("Psycho Overlap\t\t = %llu\n", TotalTime[3]/factor);
+        printf("Psycho Init Data\t = %llu\n", TotalTime[0]/factor);
+        printf("Psycho FFT\t\t = %llu\n", TotalTime[1]/factor);
+        printf("Psycho FIR\t\t = %llu\n", TotalTime[2]/factor);
+        printf("Psycho IFFT\t\t = %llu\n", TotalTime[3]/factor);
+        printf("Psycho Overlap\t\t = %llu\n", TotalTime[4]/factor);
     }
 }
