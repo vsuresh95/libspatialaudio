@@ -207,7 +207,7 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
     if(m_nOrder >= 3) {
         ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
     }
-    EndCounter(4);
+    EndCounter(5);
 }
 
 void CAmbisonicProcessor::ProcessOrder1_3D(CBFormat* pBFSrcDst, unsigned nSamples)
@@ -546,7 +546,7 @@ void CAmbisonicProcessor::ShelfFilterOrder(CBFormat* pBFSrcDst)
 }
 
 void CAmbisonicProcessor::PrintTimeInfo(unsigned factor) {
-    printf("Rotate Order\t\t = %llu\n", TotalTime[4]/factor);
+    printf("Rotate Order\t\t = %llu\n", TotalTime[5]/factor);
     printf("\n");
     printf("---------------------------------------------\n");
     printf("PSYCHO-ACOUSTIC TIME\n");
