@@ -22,6 +22,7 @@
 extern void OffloadPsychoChain(CBFormat*, kiss_fft_cpx**, float**, unsigned, bool);
 extern void OffloadPsychoPipeline(CBFormat*, kiss_fft_cpx**, float**, unsigned);
 extern void OffloadPsychoFFTIFFT(CBFormat*, kiss_fft_cpx**, float**, unsigned, kiss_fftr_cfg, kiss_fftr_cfg);
+extern void OffloadRotateOrder(CBFormat*);
 
 CAmbisonicProcessor::CAmbisonicProcessor()
     : m_orientation(0, 0, 0)
@@ -198,14 +199,18 @@ void CAmbisonicProcessor::Process(CBFormat* pBFSrcDst, unsigned nSamples)
 
     /* 3D Ambisonics input expected so perform 3D rotations */
     StartCounter();
-    if(m_nOrder >= 1) {
-        ProcessOrder1_3D_Optimized(pBFSrcDst, nSamples);
-    }
-    if(m_nOrder >= 2) {
-        ProcessOrder2_3D_Optimized(pBFSrcDst, nSamples);
-    }
-    if(m_nOrder >= 3) {
-        ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
+    if (DO_ROTATE_OFFLOAD) {
+        OffloadRotateOrder(pBFSrcDst);
+    } else {
+        if(m_nOrder >= 1) {
+            ProcessOrder1_3D_Optimized(pBFSrcDst, nSamples);
+        }
+        if(m_nOrder >= 2) {
+            ProcessOrder2_3D_Optimized(pBFSrcDst, nSamples);
+        }
+        if(m_nOrder >= 3) {
+            ProcessOrder3_3D_Optimized(pBFSrcDst, nSamples);
+        }
     }
     EndCounter(5);
 }
