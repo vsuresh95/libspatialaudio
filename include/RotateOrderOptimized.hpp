@@ -5,6 +5,16 @@
 #define QUAUX(X) #X
 #define QU(X) QUAUX(X)
 
+#define ESP_NON_COHERENT_DMA 3
+#define ESP_LLC_COHERENT_DMA 2
+#define ESP_COHERENT_DMA 1
+#define ESP_BASELINE_MESI 0
+
+#define SPX_OWNER_PREDICTION 3
+#define SPX_WRITE_THROUGH_FWD 2
+#define SPX_BASELINE_REQV 1
+#define SPX_BASELINE_MESI 0
+
 // Choosing the read and write code for Extended ASM functions.
 #define READ_CODE 0x0002B30B
 #define WRITE_CODE 0x0062B02B
